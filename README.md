@@ -53,7 +53,6 @@ ss.save_episode()
 Playback mode is for playing back episode logs. "left" and "right" keys go backwards and forwards through actions.
 
 ## Demo
-Demo mode is for playing back data logs. 
 
 ```python
 import surveysimulation
