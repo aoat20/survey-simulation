@@ -18,7 +18,7 @@ pip install git+https://github.com/aoat20/survey-simulation
 ## Usage
 Import the package and initialise a sim object with mode, param file location and save location:
 ```python 
-import surveyimulation
+import surveysimulation
 ss = surveysimulation.SurveySimulation(mode,
                                        params_loc,
                                        save_loc)
