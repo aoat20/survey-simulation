@@ -763,6 +763,8 @@ class SurveySimulation():
             # work out how many more contacts have been added and add new ones
             l_d = len(detections)
             l_p = len(self.detectionslineplt)
+            for n in range (l_p - l_d):
+                self.detectionslineplt.pop()
             for n in range(l_d - l_p):
                 self.detectionslineplt.append(plt.scatter(detections[l_p+n].x,
                                                           detections[l_p+n].y,
