@@ -18,8 +18,8 @@ pip install git+https://github.com/aoat20/survey-simulation
 ## Usage
 Import the package and initialise a sim object with mode, param file location and save location:
 ```python 
-import surveysimulation
-ss = surveysimulation.SurveySimulation(mode,
+import survey_simulation
+ss = survey_simulation.SurveySimulation(mode,
                                        params_loc,
                                        save_loc)
 
@@ -55,11 +55,11 @@ Playback mode is for playing back episode logs. "left" and "right" keys go backw
 ## Demo
 
 ```python
-import surveysimulation
+import survey_simulation
 import numpy as np
 
 # example random run
-ss = surveysimulation.SurveySimulation('test',
+ss = survey_simulation.SurveySimulation('test',
                                        save_loc='data')
 for n in range(100):
     rnd_mv = np.random.randint(0,100,size=(2)).tolist()
@@ -75,7 +75,7 @@ for n in range(100):
 ss.save_episode()
 
 # Playing back data
-ss_pb = surveysimulation.SurveySimulation('playback',
+ss_pb = survey_simulation.SurveySimulation('playback',
                                           save_loc='data/Episode0')
 
 ```
