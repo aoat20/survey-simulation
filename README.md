@@ -44,6 +44,21 @@ ss.new_action('move',[x, y])
 ss.new_action('group', [c0, c1, c2])
 ss.new_action('ungroup',[g0])
 ```
+"move" action outputs three data objects:
+```python
+t, cov_map, contacts = ss.new_action('move', [x,y])
+```
+- "t" is the remaining mission time
+- "cov_map" is the coverage from the pass, with the value being the scan direction.
+- "contacts" is a  list of detections with fields:
+  - det_n - detection index
+  - x - x coordinate
+  - y - y coordinate
+  - range - range at which scan was performed (currently unused)
+  - angle - angle from which the detection was made
+  - scan_n - index of the scan in which the detection was made
+  - group_n - index of the group to which the detection belongs
+
 To save the episode logs:
 ```python
 ss.save_episode()
