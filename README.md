@@ -51,13 +51,13 @@ t, cov_map, contacts = ss.new_action('move', [x,y])
 - "t" is the remaining mission time
 - "cov_map" is the coverage from the pass, with the value being the scan direction.
 - "contacts" is a  list of detections with fields:
-  - det_n - detection index
-  - x - x coordinate
-  - y - y coordinate
-  - range - range at which scan was performed (currently unused)
-  - angle - angle from which the detection was made
-  - scan_n - index of the scan in which the detection was made
-  - group_n - index of the group to which the detection belongs
+  - `det_n` - detection index
+  - `x` - x coordinate
+  - `y` - y coordinate
+  - `range` - range at which scan was performed (currently unused)
+  - `angle` - angle from which the detection was made
+  - `scan_n` - index of the scan in which the detection was made
+  - `group_n` - index of the group to which the detection belongs
 
 To save the episode logs:
 ```python
