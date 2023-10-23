@@ -5,6 +5,7 @@ import cv2
 import math
 import os
 from dataclasses import dataclass
+from PIL import Image
 
 
 class SurveySimulation():
@@ -36,6 +37,14 @@ class SurveySimulation():
             else:
                 np.random.seed(100)
 
+            if self.params['map_n']:
+                self.custom_map(self.params['map_n'])
+            else:
+                # Set the valid area mask
+                pass
+                self.map_mask = self.params['map_area_lims']
+
+
             self.agent_pos = self.params['agent_start']
 
             # TODO add ability to load ground truth from file
@@ -54,7 +63,7 @@ class SurveySimulation():
                 self.plotter = self.Plotter(self.params)
                 # event handlers
                 self.groupswitch = True
-                self.snaptoangle = True
+                self.snaptoangle = False
                 # mouse and key event handlers
                 self.plotter.ax.figure.canvas.mpl_connect('button_press_event',
                                                           self.on_click)
@@ -65,21 +74,26 @@ class SurveySimulation():
                 self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
                                                           self.on_key_manual)
 
+                plt.show()
+                '''
                 try:
                     while True:
                         plt.show(block=False)
                         xy = list(map(int,
-                                      input("Specify next (x,y):  ").strip().split(',')))
+                                    input("Specify next (x,y):  ").strip().split(',')))
                         self.add_newxy(xy[0], xy[1])
                 except KeyboardInterrupt:
                     print('Closing')
-
+                ''' 
         elif mode == 'playback':
             # find the metadata param file
             l_dir = os.listdir(save_loc)
             p_loc = [x for x in l_dir if 'META' in x][0]
             self.params = self.load_params(os.path.join(save_loc, p_loc))
             self.action_id = 0
+
+            if self.params['map_n']:
+                self.custom_map(self.params['map_n'])
 
             # instantiate the relevant classes
             self.contacts = self.ContactDetections(self.params)
@@ -225,6 +239,25 @@ class SurveySimulation():
         x = rho_r * np.cos(phi_r) + x0
         y = rho_r * np.sin(phi_r) + y0
         return x, y
+
+    def custom_map(self, map_n):
+        # setup for a custom map
+        img = np.asarray(Image.open('maps/Map'+str(map_n)+'.png'))
+        img_tmp = img[:,:,0]
+        img_nz = np.where(img_tmp==0)
+        sa_bounds = (min(img_nz[1]), max(img_nz[1]), 
+                     min(img_nz[0]), max(img_nz[0]))
+
+        self.params['scan_area_lims'] = sa_bounds
+        self.params['map_area_lims'] = (0, img_tmp.shape[1], 
+                                        0, img_tmp.shape[0])
+        self.map_mask  = np.where(img_tmp==0, 1, 0)
+        print(self.params)
+        # Set the agent start position for each map
+        if map_n==1:
+            self.params['agent_start'] = (58.,192.)
+        elif map_n==2:
+            self.params['agent_start'] = (31.,55.)
 
     def reset(self):
         self.generate_contacts(self.params)
@@ -501,34 +534,35 @@ class SurveySimulation():
         def add_dets(self, contacts, rect_corners, scan_angles):
             # output to recorder
             obs_str = []
-            # for each side of new scan
-            for n in [0, 1]:
-                # check if inside scan area and detected
-                rect_c_tmp = rect_corners[n] + [self.sa[0],
-                                                self.sa[2]]
-                x_out, y_out = self.inside_rect(contacts,
-                                                rect_c_tmp,
-                                                scan_angles[n])
-                rng = 0
-                if x_out:
-                    # add new detections
-                    for n2 in range(len(x_out)):
-                        # make new detection
-                        det_temp = Detection(self.det_n,
-                                             x_out[n2],
-                                             y_out[n2],
-                                             rng,
-                                             scan_angles[n],
-                                             self.scan_n,
-                                             None)
-                        self.detections.append(det_temp)
-                        # output to recorder
-                        obs_str.append([self.det_n,
-                                        x_out[n2],
-                                        y_out[n2],
-                                        rng,
-                                        scan_angles[n]])
-                        self.det_n += 1
+            if np.array(rect_corners).any():
+                # for each side of new scan
+                for n in [0, 1]:
+                    # check if inside scan area and detected
+                    rect_c_tmp = rect_corners[n] + [self.sa[0],
+                                                    self.sa[2]]
+                    x_out, y_out = self.inside_rect(contacts,
+                                                    rect_c_tmp,
+                                                    scan_angles[n])
+                    rng = 0
+                    if x_out:
+                        # add new detections
+                        for n2 in range(len(x_out)):
+                            # make new detection
+                            det_temp = Detection(self.det_n,
+                                                x_out[n2],
+                                                y_out[n2],
+                                                rng,
+                                                scan_angles[n],
+                                                self.scan_n,
+                                                None)
+                            self.detections.append(det_temp)
+                            # output to recorder
+                            obs_str.append([self.det_n,
+                                            x_out[n2],
+                                            y_out[n2],
+                                            rng,
+                                            scan_angles[n]])
+                            self.det_n += 1
             self.scan_n += 1
             return obs_str
 
@@ -602,6 +636,7 @@ class SurveySimulation():
 
         def __init__(self, params):
             # unpack parameters
+            mp = params['map_n']
             ma = params['map_area_lims']
             gr = params['grid_res']
             sa = params['scan_area_lims']
@@ -617,7 +652,7 @@ class SurveySimulation():
 
             # set up empty plot
             self.fig, self.ax = plt.subplots()
-            self.ax.axis('equal')
+            #self.ax.axis('equal')
             self.ax.set_xlim(xmin=ma[0],
                              xmax=ma[1])
             self.ax.set_ylim(ymin=ma[2],
@@ -630,6 +665,14 @@ class SurveySimulation():
                                          ma[1], gr))
             self.ax.set_yticks(np.arange(ma[2],
                                          ma[3], gr))
+            
+            # get the map image and show
+            if mp:
+                dir_path = os.path.dirname(__file__)
+                map_path = os.path.join(dir_path,'../maps/Map'+str(mp)+'.png')
+                img = np.asarray(Image.open(map_path))
+                self.ax.imshow(img)
+
             # agent position
             self.agentpos, = self.ax.plot(self.bs[0], self.bs[1],
                                          marker="o",
@@ -692,7 +735,7 @@ class SurveySimulation():
             self.ax.figure.canvas.draw()
 
         def reset(self):
-            self.updateagent(self.bs[0], self.bs[0])
+            self.updateagent(self.bs[0], self.bs[1])
             self.cov_plt.set_data(np.zeros((self.sa[3]-self.sa[2],
                                             self.sa[1]-self.sa[0],
                                             3)))
@@ -817,7 +860,7 @@ class SurveySimulation():
                                      width=rec_l,
                                      height=self.sw,
                                      angle=rec_rot_deg,
-                                     rotation_point=(x0, y0),
+                                     #rotation_point=(x0, y0),
                                      alpha=0.5,
                                      zorder=1)
 
@@ -1030,12 +1073,13 @@ class SurveySimulation():
         if not self.end_episode and self.groupswitch:
             # add new coordinate to agent
             x_i, y_i = event.xdata, event.ydata
-            x0, y0 = self.agent_pos[0], self.agent_pos[1]
-            if self.snaptoangle:
-                x, y = self.round_to_angle(x0, y0, x_i, y_i)
-            else:
-                x, y = x_i, y_i
-            self.add_newxy(x, y)
+            if self.map_mask[round(y_i), round(x_i)]:
+                x0, y0 = self.agent_pos[0], self.agent_pos[1]
+                if self.snaptoangle:
+                    x, y = self.round_to_angle(x0, y0, x_i, y_i)
+                else:
+                    x, y = x_i, y_i
+                self.add_newxy(x, y)
 
     def on_pick(self, event):
         if not self.end_episode and not self.groupswitch:

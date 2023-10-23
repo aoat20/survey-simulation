@@ -1,11 +1,12 @@
-agent_start: (0., 0.) 
+agent_start: (30., 30.) 
+map_n: 2
 scan_width: 20.
 leadinleadout: 5.
 min_scan_l: 10.
 nadir_width: 3.
 agent_speed: 20.
-scan_area_lims: (0, 200, 0, 100)
-map_area_lims: (-20, 220, -20, 120) 
+scan_area_lims: (30, 200, 30, 100)
+map_area_lims: (0, 220, 0, 120) 
 n_targets: 3 
 n_clutter: 3 
 det_probs: (0.4, 0.9) 
