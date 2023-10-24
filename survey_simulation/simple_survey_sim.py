@@ -37,13 +37,12 @@ class SurveySimulation():
             else:
                 np.random.seed(100)
 
-            if self.params['map_n']:
-                self.custom_map(self.params['map_n'])
+            # if no map specified, set to no map
+            if 'map_n' in self.params:
+                map_n = self.params['map_n']
             else:
-                # Set the valid area mask
-                pass
-                self.map_mask = self.params['map_area_lims']
-
+                map_n = 0
+            self.map_setup(map_n)
 
             self.agent_pos = self.params['agent_start']
 
@@ -91,9 +90,12 @@ class SurveySimulation():
             p_loc = [x for x in l_dir if 'META' in x][0]
             self.params = self.load_params(os.path.join(save_loc, p_loc))
             self.action_id = 0
-
-            if self.params['map_n']:
-                self.custom_map(self.params['map_n'])
+            # if no map specified, set to no map
+            if 'map_n' in self.params:
+                map_n = self.params['map_n']
+            else:
+                map_n = 0
+            self.map_setup(map_n)
 
             # instantiate the relevant classes
             self.contacts = self.ContactDetections(self.params)
@@ -240,24 +242,27 @@ class SurveySimulation():
         y = rho_r * np.sin(phi_r) + y0
         return x, y
 
-    def custom_map(self, map_n):
-        # setup for a custom map
-        img = np.asarray(Image.open('maps/Map'+str(map_n)+'.png'))
-        img_tmp = img[:,:,0]
-        img_nz = np.where(img_tmp==0)
-        sa_bounds = (min(img_nz[1]), max(img_nz[1]), 
-                     min(img_nz[0]), max(img_nz[0]))
+    def map_setup(self, map_n):
+        if map_n:
+            # setup for a custom map
+            img = np.asarray(Image.open('maps/Map'+str(map_n)+'.png'))
+            img_tmp = img[:,:,0]
+            img_nz = np.where(img_tmp==0)
+            sa_bounds = (min(img_nz[1]), max(img_nz[1]), 
+                        min(img_nz[0]), max(img_nz[0]))
 
-        self.params['scan_area_lims'] = sa_bounds
-        self.params['map_area_lims'] = (0, img_tmp.shape[1], 
-                                        0, img_tmp.shape[0])
-        self.map_mask  = np.where(img_tmp==0, 1, 0)
-        print(self.params)
-        # Set the agent start position for each map
-        if map_n==1:
-            self.params['agent_start'] = (58.,192.)
-        elif map_n==2:
-            self.params['agent_start'] = (31.,55.)
+            self.params['scan_area_lims'] = sa_bounds
+            self.params['map_area_lims'] = (0, img_tmp.shape[1], 
+                                            0, img_tmp.shape[0])
+            self.map_mask  = np.where(img_tmp==0, 1, 0)
+            print(self.params)
+            # Set the agent start position for each map
+            if map_n==1:
+                self.params['agent_start'] = (58.,192.)
+            elif map_n==2:
+                self.params['agent_start'] = (31.,55.)
+        else:
+            self.map_mask = self.params['map_area_lims']
 
     def reset(self):
         self.generate_contacts(self.params)
@@ -635,8 +640,7 @@ class SurveySimulation():
         """
 
         def __init__(self, params):
-            # unpack parameters
-            mp = params['map_n']
+            # unpack parameters              
             ma = params['map_area_lims']
             gr = params['grid_res']
             sa = params['scan_area_lims']
@@ -667,11 +671,15 @@ class SurveySimulation():
                                          ma[3], gr))
             
             # get the map image and show
-            if mp:
-                dir_path = os.path.dirname(__file__)
-                map_path = os.path.join(dir_path,'../maps/Map'+str(mp)+'.png')
-                img = np.asarray(Image.open(map_path))
-                self.ax.imshow(img)
+            if 'map_n' in params:
+                mp = params['map_n']
+                if mp:
+                    dir_path = os.path.dirname(__file__)
+                    map_path = os.path.join(dir_path,
+                                            '../maps/Map'
+                                            +str(mp)+'.png')
+                    img = np.asarray(Image.open(map_path))
+                    self.ax.imshow(img)
 
             # agent position
             self.agentpos, = self.ax.plot(self.bs[0], self.bs[1],
