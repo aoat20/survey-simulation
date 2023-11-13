@@ -159,7 +159,7 @@ class SurveySimulation():
                 cov_map = self.covmap.map_stack[-1]
                 t = self.timer.time_remaining
                 cntcts = self.contacts.detections
-                return t, cov_map, cntcts
+                return t, cov_map, cntcts, self.map_mask
 
         elif action_type == 'group':
             self.add_group(action)
@@ -254,7 +254,7 @@ class SurveySimulation():
             self.params['scan_area_lims'] = sa_bounds
             self.params['map_area_lims'] = (0, img_tmp.shape[1], 
                                             0, img_tmp.shape[0])
-            self.map_mask  = np.where(img_tmp==0, 1, 0)
+            self.map_mask  = np.where(img_tmp==0, 0, 1)
             print(self.params)
             # Set the agent start position for each map
             if map_n==1:
@@ -262,7 +262,7 @@ class SurveySimulation():
             elif map_n==2:
                 self.params['agent_start'] = (31.,55.)
         else:
-            self.map_mask = self.params['map_area_lims']
+            self.map_mask = np.zeros((1,1))#self.params['map_area_lims']
 
     def reset(self):
         self.generate_contacts(self.params)
@@ -1081,7 +1081,7 @@ class SurveySimulation():
         if not self.end_episode and self.groupswitch:
             # add new coordinate to agent
             x_i, y_i = event.xdata, event.ydata
-            if self.map_mask[round(y_i), round(x_i)]:
+            if not(self.map_mask.any()) or not self.map_mask[round(y_i), round(x_i)]:
                 x0, y0 = self.agent_pos[0], self.agent_pos[1]
                 if self.snaptoangle:
                     x, y = self.round_to_angle(x0, y0, x_i, y_i)

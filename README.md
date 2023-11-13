@@ -46,7 +46,7 @@ ss.new_action('ungroup',[g0])
 ```
 "move" action outputs three data objects:
 ```python
-t, cov_map, contacts = ss.new_action('move', [x,y])
+t, cov_map, contacts, occ_grid = ss.new_action('move', [x,y])
 ```
 - "t" is the remaining mission time
 - "cov_map" is the coverage from the pass, with the value being the scan direction.
@@ -58,6 +58,7 @@ t, cov_map, contacts = ss.new_action('move', [x,y])
   - `angle` - angle from which the detection was made
   - `scan_n` - index of the scan in which the detection was made
   - `group_n` - index of the group to which the detection belongs
+- "occ_grid" is the occupancy grid in image pixel coordinates. 1 is an occupied location and 0 is unoccupied and can therefore be traveled to.
 
 To save the episode logs:
 ```python
@@ -73,12 +74,18 @@ Playback mode is for playing back episode logs. "left" and "right" keys go backw
 import survey_simulation
 import numpy as np
 
-# example random run
+# example manual run
+ss = survey_simulation.SurveySimulation('manual',
+                                       save_loc='data',
+                                       params_loc='params.txt')
+
+# example test run
 ss = survey_simulation.SurveySimulation('test',
-                                       save_loc='data')
+                                       save_loc='data',
+                                       params_loc='params.txt')
 for n in range(100):
     rnd_mv = np.random.randint(0,100,size=(2)).tolist()
-    t, cov_map, contacts = ss.new_action('move', rnd_mv)
+    t, cov_map, contacts, occ_grid = ss.new_action('move', rnd_mv)
     
     # At two arbitrary steps, demo group and ungroup actions
     if n==45: 
@@ -176,15 +183,16 @@ Episode2_TRUTH.txt
 ### Meta data
 Stored in the EpisodeID_META.txt, contains the following parameters which are required to recreate the episode. eg. 
 ```
-agent_start: [0.0, 0.0]
+agent_start: [30.0, 30.0]
+map_n: 2
 scan_width: 20.0
 leadinleadout: 5.0
 min_scan_l: 10.0
 nadir_width: 3.0
 agent_speed: 20.0
-scan_area_lims: [0, 200, 0, 100]
-map_area_lims: [-20, 220, -20, 120]
-n_targets: 2
+scan_area_lims: [30, 200, 30, 100]
+map_area_lims: [0, 220, 0, 120]
+n_targets: 3
 n_clutter: 5
 det_probs: [0.4, 0.9]
 loc_uncertainty: 3.0

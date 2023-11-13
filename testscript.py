@@ -24,22 +24,24 @@ fig.canvas.draw()
 '''
 
 ss = survey_simulation.SurveySimulation('manual',
-                                       save_loc='data')
+                                      save_loc='data')
 
 #ss = survey_simulation.SurveySimulation('playback', 
 #                                       save_loc='data/Episode0')
 
-#ss = survey_simulation.SurveySimulation('test',
+# ss = survey_simulation.SurveySimulation('test',
 #                                       save_loc='data')
-#for n in range(100):
-#    rnd_mv = np.random.randint(0,100,size=(2)).tolist()
-#    t, cov_map, contacts = ss.new_action('move', rnd_mv)
+# for n in range(100):
+#     rnd_mv = np.random.randint(0,100,size=(2)).tolist()
+#     t, cov_map, contacts, mp_msk = ss.new_action('move', rnd_mv)
     
-#    print(contacts)
-    
-    # At two arbitrary steps, demo group and ungroup actions
-#    if n==45: 
-#        ss.new_action('group', [0,1,2])
-#    if n==65:
-#        ss.new_action('ungroup', [0])
-#        ss.new_action('group', [1,3,4])
+#     plt.imshow(mp_msk)
+     
+#     #At two arbitrary steps, demo group and ungroup actions
+#     if n==45: 
+#         ss.new_action('group', [0,1,2])
+#     if n==65:
+#         ss.new_action('ungroup', [0])
+#         ss.new_action('group', [1,3,4])
+
+# plt.show()
