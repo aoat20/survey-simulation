@@ -670,6 +670,9 @@ class SurveySimulation():
             self.ax.set_yticks(np.arange(ma[2],
                                          ma[3], gr))
             
+            self.ax.set_xlabel('Easting, m')
+            self.ax.set_ylabel('Northing, m')
+
             # get the map image and show
             if 'map_n' in params:
                 mp = params['map_n']
@@ -738,7 +741,7 @@ class SurveySimulation():
             self.p_empty = self.make_patch(0, 0, 0, 0)
             self.p = self.ax.add_patch(self.p_empty)
             # add time to title
-            self.ax.set_title("{:.0f} : {:.0f}".format(self.tl, self.tl))
+            self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(self.tl, self.tl))
 
             self.ax.figure.canvas.draw()
 
@@ -836,7 +839,7 @@ class SurveySimulation():
             self.det_grp_plt.set_data(g_x, g_y)
 
         def updatetime(self, t, t_tmp):
-            self.ax.set_title("{:.0f} : {:.0f}".format(t, t_tmp))
+            self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(t, t_tmp))
 
         def reveal_targets(self, contacts_t):
             n_targets = [i for i, x in enumerate(contacts_t, 1)
