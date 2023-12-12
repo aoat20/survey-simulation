@@ -28,7 +28,8 @@ class SurveySimulation():
         self.mode = mode
         self.save_loc = save_loc
         self.end_episode = False
-
+        self.move_complete = True
+        
         # check mode of operation
         if mode == "manual" or mode == 'test':
             self.params = self.load_params(params_loc)
@@ -43,7 +44,8 @@ class SurveySimulation():
             else:
                 map_n = 0
             self.map_setup(map_n)
-
+            self.rt = self.params['rt']
+            self.t_step = self.params['t_step']
             self.agent_pos = self.params['agent_start']
 
             # TODO add ability to load ground truth from file
@@ -60,9 +62,12 @@ class SurveySimulation():
             if mode == 'manual':
                 # also add the plotter
                 self.plotter = self.Plotter(self.params)
+
                 # event handlers
                 self.groupswitch = True
                 self.snaptoangle = False
+                self.play = True
+
                 # mouse and key event handlers
                 self.plotter.ax.figure.canvas.mpl_connect('button_press_event',
                                                           self.on_click)
@@ -72,8 +77,8 @@ class SurveySimulation():
                                                           self.on_pick)
                 self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
                                                           self.on_key_manual)
-
                 plt.show()
+
                 '''
                 try:
                     while True:
@@ -166,30 +171,79 @@ class SurveySimulation():
         elif action_type == 'ungroup':
             self.remove_group(action)
 
-    def add_newxy(self, x, y):
-        # add new scan to coverage map
-        x0, y0 = self.agent_pos[0], self.agent_pos[1]
+    def updatescans(self):
+        # once the move is complete add scan and contacts
+        xend, yend = self.agent_pos[0], self.agent_pos[1]
+        x0, y0  = self.agent_xy0[0], self.agent_xy0[1]
         rc, ang = self.covmap.add_scan(x0, y0,
-                                       x, y)
-        # check contact detections
+                            xend, yend)
         obs_str = self.contacts.add_dets(self.contacts_t, rc, ang)
-        self.agent_pos = [x, y]
-        self.timer.update((x0, y0), (x, y))
+        self.updateplots()
 
-        # logging
-        self.logger.addmove(x, y, self.covmap.map_stack[-1])
-        self.logger.addobservation(obs_str, self.timer.time_remaining)
+    def updateplots(self):
+        # plotting
+        self.plotter.updatecovmap(self.covmap.map_stack)
+        self.plotter.updatecontacts(self.contacts.detections)
+        self.plotter.updateagent(self.agent_pos)
+        self.plotter.updatetime(self.timer.time_remaining,
+                                self.timer.time_remaining)
+        self.plotter.remove_temp()
+        self.plotter.fig.canvas.draw()
+
+    def add_newxy(self, x, y):
+        # if real-time switch is on, travel to target. If off, instantaneously travel to target
+        if self.rt:
+            self.plotter.updatetarget((x,y))
+            self.move_complete = False
+            # Get the start position of the scan
+            x0, y0 = self.agent_pos[0], self.agent_pos[1]
+            self.agent_xy0 = (x0,y0)
+            agent_speed = self.params['agent_speed']
+            t_step = self.params['t_step']
+            x_prev, y_prev = x0, y0
+            d = 0 
+
+            # get move complete distance
+            d_final = np.sqrt((x-x0)**2 + (y-y0)**2)
+
+            # Get the angle of the path
+            heading = np.arctan2(x-x0, y-y0)
+            d_step = agent_speed*t_step
+            x_step, y_step = d_step*np.sin(heading), d_step*np.cos(heading) 
+            while not self.move_complete:
+                plt.pause(0.1)
+                if self.play:
+                    d = d+d_step
+                    if d<d_final:
+                        # move towards target
+                        self.agent_pos = [x_prev+x_step, y_prev+y_step]
+                        self.timer.update((x_prev, y_prev), self.agent_pos)
+                        self.plotter.updatetime(self.timer.time_remaining,
+                                                self.timer.time_remaining)
+                        x_prev, y_prev = self.agent_pos[0], self.agent_pos[1]
+                    else: 
+                        self.agent_pos = [x, y]
+                        self.move_complete = True
+                    self.plotter.updateagent(self.agent_pos)
+            self.updatescans()
+
+        else:
+            # add new scan to coverage map
+            x0, y0 = self.agent_pos[0], self.agent_pos[1]
+            rc, ang = self.covmap.add_scan(x0, y0,
+                                        x, y)
+            # check contact detections
+            obs_str = self.contacts.add_dets(self.contacts_t, rc, ang)
+            self.agent_pos = [x, y]
+            self.timer.update((x0, y0), (x, y))
+
+            # logging
+            self.logger.addmove(x, y, self.covmap.map_stack[-1])
+            self.logger.addobservation(obs_str, self.timer.time_remaining)
 
         # if manual mode, also plot
         if self.mode == 'manual':
-            # plotting
-            self.plotter.updatecovmap(self.covmap.map_stack)
-            self.plotter.updatecontacts(self.contacts.detections)
-            self.plotter.updateagent(x, y)
-            self.plotter.updatetime(self.timer.time_remaining,
-                                    self.timer.time_remaining)
-            self.plotter.remove_temp()
-            self.plotter.fig.canvas.draw()
+            self.updateplots()
 
     def add_group(self, c_inds):
         self.contacts.dets_to_clus(c_inds)
@@ -283,6 +337,42 @@ class SurveySimulation():
         self.logger.save_data(str(i))
         print('Saving output to Episode '+str(i))
         self.end_episode = True
+
+    def check_path(self, x1i, y1i, x2i, y2i): 
+        x1, y1 = round(x1i), round(y1i)
+        x2, y2 = round(x2i), round(y2i)
+        
+        dx = x2 - x1
+        dy = y2 - y1
+
+        xsign = 1 if dx > 0 else -1
+        ysign = 1 if dy > 0 else -1
+
+        dx = abs(dx)
+        dy = abs(dy)
+        if dx > dy:
+            xx, xy, yx, yy = xsign, 0, 0, ysign
+        else:
+            dx, dy = dy, dx
+            xx, xy, yx, yy = 0, ysign, xsign, 0
+
+        p = 2*dy - dx
+        y = 0
+        xcoordinates = [x1]
+        ycoordinates = [y1]
+
+        for x in range(dx + 1):
+            xout, yout =  x1 + x*xx + y*yx, y1 + x*xy + y*yy
+            if p >= 0:
+                y += 1
+                p -= 2*dx
+            p += 2*dy
+            #xcoordinates.append(xout)
+            #ycoordinates.append(yout)     
+               
+            if self.map_mask[yout,xout]: 
+                return 0 
+        return 1
 
     class Playback:
         """ Playback of survey data
@@ -689,8 +779,15 @@ class SurveySimulation():
                                          marker="o",
                                          markersize=10,
                                          markeredgecolor="blue",
-                                         markerfacecolor="blue",
+                                         markerfacecolor=[0.1, 0.6, 1],
                                          zorder=5)
+            self.target_pos, = self.ax.plot([],
+                                           [],
+                                           marker="x",
+                                            markersize=10,
+                                            markeredgecolor="red",
+                                            markerfacecolor="red",
+                                            zorder=4)
             # agent track
             self.track_plt, = self.ax.plot(self.bs[0], self.bs[1],
                                            '--',
@@ -746,7 +843,7 @@ class SurveySimulation():
             self.ax.figure.canvas.draw()
 
         def reset(self):
-            self.updateagent(self.bs[0], self.bs[1])
+            self.updateagent([self.bs[0], self.bs[1]])
             self.cov_plt.set_data(np.zeros((self.sa[3]-self.sa[2],
                                             self.sa[1]-self.sa[0],
                                             3)))
@@ -773,8 +870,13 @@ class SurveySimulation():
             self.p = self.ax.add_patch(self.p_empty)
             self.track_plt.set_data([0], [0])
 
-        def updateagent(self, x, y):
+        def updateagent(self, pos):            
+            x, y = pos[0], pos[1]
             self.agentpos.set_data([x], [y])
+
+        def updatetarget(self, pos):            
+            x, y = pos[0], pos[1]
+            self.target_pos.set_data([x], [y])
 
         def updatecovmap(self, map_stack):
             m_x = len(map_stack[0][0])
@@ -839,7 +941,7 @@ class SurveySimulation():
             self.det_grp_plt.set_data(g_x, g_y)
 
         def updatetime(self, t, t_tmp):
-            self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(t, t_tmp))
+            self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(t_tmp, t))
 
         def reveal_targets(self, contacts_t):
             n_targets = [i for i, x in enumerate(contacts_t, 1)
@@ -1018,6 +1120,8 @@ class SurveySimulation():
     def on_key_manual(self, event):
         # normal operation if episode is ongoing
         if not self.end_episode:
+            if event.key == "p":
+                self.play = not self.play
             if event.key == "z":
                 self.snaptoangle = not self.snaptoangle
             if event.key == 'shift':
@@ -1071,7 +1175,7 @@ class SurveySimulation():
         grps = []
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
         self.plotter.updatetime(t, t)
-        self.plotter.updateagent(bp[0], bp[1])
+        self.plotter.updateagent([bp[0], bp[1]])
         self.plotter.updatecovmap(cm)
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)
@@ -1084,13 +1188,21 @@ class SurveySimulation():
         if not self.end_episode and self.groupswitch:
             # add new coordinate to agent
             x_i, y_i = event.xdata, event.ydata
+            x0, y0 = self.agent_pos[0], self.agent_pos[1]
+
             if not(self.map_mask.any()) or not self.map_mask[round(y_i), round(x_i)]:
-                x0, y0 = self.agent_pos[0], self.agent_pos[1]
-                if self.snaptoangle:
-                    x, y = self.round_to_angle(x0, y0, x_i, y_i)
-                else:
-                    x, y = x_i, y_i
-                self.add_newxy(x, y)
+                cp = self.check_path(x0,y0,x_i,y_i)
+
+                if cp:
+                    if self.snaptoangle:
+                        x, y = self.round_to_angle(x0, y0, x_i, y_i)
+                    else:
+                        x, y = x_i, y_i
+                    if not self.move_complete:
+                        self.updatescans()
+                    if not self.play:
+                        self.play = True
+                    self.add_newxy(x, y)
 
     def on_pick(self, event):
         if not self.end_episode and not self.groupswitch:

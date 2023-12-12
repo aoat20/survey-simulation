@@ -1,5 +1,7 @@
+rt: 1
+t_step: 0.2
 agent_start: (30., 30.) 
-map_n: 2
+map_n: 1
 scan_width: 20.
 leadinleadout: 5.
 min_scan_l: 10.
