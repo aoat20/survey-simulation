@@ -260,10 +260,7 @@ class SurveySimulation():
         lu = params['loc_uncertainty']
         nt = params['n_targets']
         nc = params['n_clutter']
-        x_lims = np.array([sa[0], sa[1]]) + np.array([lu, -lu])*4
-        y_lims = np.array([sa[2], sa[3]]) + np.array([lu, -lu])*4
-
-        nz_i = np.nonzero(self.map_mask)
+        nz_i = np.where(self.map_mask == 0)
 
         self.contacts_t = []
         # generate target contacts
@@ -271,16 +268,16 @@ class SurveySimulation():
             n_rnd = np.random.randint(0,len(nz_i[0]))
             self.contacts_t.append(TargetObject(n,
                                                 'Target',
-                                                (nz_i[0][n_rnd],
-                                                 nz_i[1][n_rnd]),
+                                                (nz_i[1][n_rnd],
+                                                 nz_i[0][n_rnd]),
                                                 round(np.random.uniform(0, 360))))
         # generate non-target contacts
         for n in np.arange(nc):
             n_rnd = np.random.randint(0,len(nz_i[0]))
             self.contacts_t.append(TargetObject(n+nt,
                                                 'Clutter',
-                                                (nz_i[0][n_rnd],
-                                                 nz_i[1][n_rnd]),
+                                                (nz_i[1][n_rnd],
+                                                 nz_i[0][n_rnd]),
                                                 np.random.uniform(0, 360)))
 
     def round_to_angle(self, x0, y0, x1, y1):
@@ -1119,7 +1116,8 @@ class SurveySimulation():
                                      x, y)
             self.plotter.updatetime(self.timer.time_remaining,
                                     t_tmp)
-            self.plotter.fig.canvas.draw()
+            if not self.play or self.move_complete:
+                self.plotter.fig.canvas.draw()
 
     def on_key_manual(self, event):
         # normal operation if episode is ongoing
