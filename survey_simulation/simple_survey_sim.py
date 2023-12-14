@@ -256,8 +256,6 @@ class SurveySimulation():
 
     def generate_contacts(self, params):
         # get relevant params
-        sa = params['scan_area_lims']
-        lu = params['loc_uncertainty']
         nt = params['n_targets']
         nc = params['n_clutter']
         nz_i = np.where(self.map_mask == 0)
@@ -313,7 +311,8 @@ class SurveySimulation():
             elif map_n==2:
                 self.params['agent_start'] = (31.,55.)
         else:
-            self.map_mask = np.zeros((1,1))#self.params['map_area_lims']
+            mp = self.params['map_area_lims']
+            self.map_mask = np.zeros((mp[3],mp[1]))
 
     def reset(self):
         self.generate_contacts(self.params)
@@ -852,6 +851,7 @@ class SurveySimulation():
             self.det_cls_plt.set_data([], [])
             self.det_grp_plt.set_data([], [])
             self.targ_plt.set_data([], [])
+            self.target_pos.set_data([], [])
             self.updatetime(self.tl, self.tl)
             for p in self.detectionslineplt:
                 p.remove()
