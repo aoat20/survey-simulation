@@ -263,24 +263,24 @@ class SurveySimulation():
         x_lims = np.array([sa[0], sa[1]]) + np.array([lu, -lu])*4
         y_lims = np.array([sa[2], sa[3]]) + np.array([lu, -lu])*4
 
+        nz_i = np.nonzero(self.map_mask)
+
         self.contacts_t = []
         # generate target contacts
         for n in np.arange(nt):
+            n_rnd = np.random.randint(0,len(nz_i[0]))
             self.contacts_t.append(TargetObject(n,
                                                 'Target',
-                                                (np.random.randint(x_lims[0],
-                                                                   x_lims[1]),
-                                                 np.random.randint(y_lims[0],
-                                                                   y_lims[1])),
+                                                (nz_i[0][n_rnd],
+                                                 nz_i[1][n_rnd]),
                                                 round(np.random.uniform(0, 360))))
         # generate non-target contacts
         for n in np.arange(nc):
+            n_rnd = np.random.randint(0,len(nz_i[0]))
             self.contacts_t.append(TargetObject(n+nt,
                                                 'Clutter',
-                                                (np.random.randint(x_lims[0],
-                                                                   x_lims[1]),
-                                                 np.random.randint(y_lims[0],
-                                                                   y_lims[1])),
+                                                (nz_i[0][n_rnd],
+                                                 nz_i[1][n_rnd]),
                                                 np.random.uniform(0, 360)))
 
     def round_to_angle(self, x0, y0, x1, y1):
@@ -703,6 +703,10 @@ class SurveySimulation():
                         x_out.append(xy_temp[0])
                         y_out.append(xy_temp[1])
             return x_out, y_out
+
+    class AISLocations:
+        def __init__(self):
+            pass
 
     class Timer:
         def __init__(self, params):
@@ -1203,6 +1207,12 @@ class SurveySimulation():
                     if not self.play:
                         self.play = True
                     self.add_newxy(x, y)
+                else:
+                    self.plotter.p.set_facecolor((1, 1, 1))
+                    self.plotter.fig.canvas.draw()
+            else: 
+                self.plotter.p.set_facecolor((1, 1, 1))
+                self.plotter.fig.canvas.draw()
 
     def on_pick(self, event):
         if not self.end_episode and not self.groupswitch:
