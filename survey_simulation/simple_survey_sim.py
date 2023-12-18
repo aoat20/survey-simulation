@@ -68,6 +68,8 @@ class SurveySimulation():
                 self.snaptoangle = False
                 self.play = True
 
+                self.xy_temp = [0,0]
+
                 # mouse and key event handlers
                 self.plotter.ax.figure.canvas.mpl_connect('button_press_event',
                                                           self.on_click)
@@ -118,8 +120,8 @@ class SurveySimulation():
         param_dict = {}
         with open(param_file) as fh:
             for line in fh:
-                # handle empty lines
-                if line.strip():
+                # handle empty lines and commented
+                if line.strip() and not line[0]=='#':
                     # split keys and values
                     key, value = [x.strip()
                                   for x in line.strip().split(':', 1)]
@@ -220,6 +222,8 @@ class SurveySimulation():
                         self.timer.update((x_prev, y_prev), self.agent_pos)
                         self.plotter.updatetime(self.timer.time_remaining,
                                                 self.timer.time_remaining)
+                        self.plotter.update_temp(self.agent_pos[0], self.agent_pos[1], 
+                                                 self.xy_temp[0], self.xy_temp[1])
                         x_prev, y_prev = self.agent_pos[0], self.agent_pos[1]
                     else: 
                         self.agent_pos = [x, y]
@@ -711,10 +715,10 @@ class SurveySimulation():
             self.bs = params['agent_speed']
             self.time_remaining = tl
 
-        def update_temp(self, xy1, xy2):
+        def update_temp(self, xy1, xy2, xy0):
             t_rem_temp = (self.time_remaining
                           - self.elapsedtime(xy1, xy2)
-                          - self.elapsedtime(xy2, (0, 0)))
+                          - self.elapsedtime(xy2, xy0))
             return t_rem_temp
 
         def update(self, xy1, xy2):
@@ -1032,6 +1036,9 @@ class SurveySimulation():
                                           '\n']))
             self.action_id += 1
 
+        def addinterrupt(self): 
+            pass
+
         def addobservation(self, obs, t):
             if obs:
                 for ob in obs:
@@ -1111,7 +1118,9 @@ class SurveySimulation():
                 x, y = self.round_to_angle(x0, y0, x_i, y_i)
             else:
                 x, y = x_i, y_i
-            t_tmp = self.timer.update_temp((x0, y0), (x, y))
+            self.xy_temp = (x,y)
+            st_pos = self.params['agent_start'] 
+            t_tmp = self.timer.update_temp((x0, y0), (x, y), st_pos)
             self.plotter.update_temp(x0, y0,
                                      x, y)
             self.plotter.updatetime(self.timer.time_remaining,
