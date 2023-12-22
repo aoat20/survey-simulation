@@ -181,6 +181,11 @@ class SurveySimulation():
                             xend, yend)
         obs_str = self.contacts.add_dets(self.contacts_t, rc, ang)
         self.updateplots()
+        # add move request to logger
+        if not self.move_complete:
+            self.logger.addplanchange(self.agent_pos[0],self.agent_pos[1])
+        self.logger.addcovmap(self.covmap.map_stack[-1])
+        self.logger.addobservation(obs_str, self.timer.time_remaining)
 
     def updateplots(self):
         # plotting
@@ -212,6 +217,10 @@ class SurveySimulation():
             heading = np.arctan2(x-x0, y-y0)
             d_step = agent_speed*t_step
             x_step, y_step = d_step*np.sin(heading), d_step*np.cos(heading) 
+
+            # add movement request to logger
+            self.logger.addmove(x,y)
+
             while not self.move_complete:
                 plt.pause(0.1)
                 if self.play:
@@ -227,6 +236,9 @@ class SurveySimulation():
                         x_prev, y_prev = self.agent_pos[0], self.agent_pos[1]
                     else: 
                         self.agent_pos = [x, y]
+                        self.timer.update((x_prev, y_prev), self.agent_pos)
+                        self.plotter.updatetime(self.timer.time_remaining,
+                                                self.timer.time_remaining)
                         self.move_complete = True
                     self.plotter.updateagent(self.agent_pos)
             self.updatescans()
@@ -243,6 +255,7 @@ class SurveySimulation():
 
             # logging
             self.logger.addmove(x, y, self.covmap.map_stack[-1])
+            self.logger.addcovmap(self.covmap.map_stack[-1])
             self.logger.addobservation(obs_str, self.timer.time_remaining)
 
         # if manual mode, also plot
@@ -1001,22 +1014,24 @@ class SurveySimulation():
             self.cov = []
             # add initial conditions
             self.addmove(bs[0],
-                         bs[1],
-                         np.flip(np.ones((sa[3]-sa[2],
+                         bs[1])
+            self.addcovmap(np.flip(np.ones((sa[3]-sa[2],
                                          sa[1]-sa[0]))*np.nan, 0))
             self.addtruth(gnd_trth)
             self.addobservation([], tl)
             self.addmeta(params)
 
-        def addmove(self, x, y, cov_map):
+        def addmove(self, x, y):
             self.actions.append(" ".join([str(self.action_id),
                                           "move",
                                           "{:.1f}".format(x),
                                           "{:.1f}".format(y),
                                           '\n']))
-            self.cov.append(cov_map)
             self.action_id_cov.append(self.action_id)
             self.action_id += 1
+
+        def addcovmap(self, cov_map):
+            self.cov.append(cov_map)
 
         def addgroup(self, group_n, c_ind):
             c_ind.sort()
@@ -1036,8 +1051,12 @@ class SurveySimulation():
                                           '\n']))
             self.action_id += 1
 
-        def addinterrupt(self): 
-            pass
+        def addplanchange(self, x, y): 
+            self.actions.append(" ".join([str(self.action_id-1),
+                                "planchange",
+                                "{:.1f}".format(x),
+                                "{:.1f}".format(y),
+                                '\n']))
 
         def addobservation(self, obs, t):
             if obs:
@@ -1201,19 +1220,23 @@ class SurveySimulation():
             x_i, y_i = event.xdata, event.ydata
             x0, y0 = self.agent_pos[0], self.agent_pos[1]
 
+            # check if the requested position is in an occupied space
             if not(self.map_mask.any()) or not self.map_mask[round(y_i), round(x_i)]:
+                # check that the path doesn't go through occupied spaces
                 cp = self.check_path(x0,y0,x_i,y_i)
-
                 if cp:
                     if self.snaptoangle:
                         x, y = self.round_to_angle(x0, y0, x_i, y_i)
                     else:
                         x, y = x_i, y_i
+
+                    # handle if the previous move request wasn't completed
                     if not self.move_complete:
                         self.updatescans()
                     if not self.play:
                         self.play = True
                     self.add_newxy(x, y)
+
                 else:
                     self.plotter.p.set_facecolor((1, 1, 1))
                     self.plotter.fig.canvas.draw()
