@@ -401,12 +401,24 @@ class SurveySimulation():
             self.truth = self.load_textfiles(save_loc, 'TRUTH')
             self.cov_map, self.cov_inds = self.load_covmaps(save_loc)
             self.observations = self.load_textfiles(save_loc, 'OBSERVATIONS')
+            print(self.actions)
 
         def get_data(self, action_id):
             print("Action ID: ", action_id)
             # get all the data as it would have been at that action
-            agent_pos = [n for n in self.actions if n[1] == 'move'
-                        if n[0] <= action_id][-1][2:]
+
+            # check whether there was a plan change at the desired action
+            pc = [n for n in self.actions if n[1] == 'planchange' 
+                  and n[0] == action_id]
+            if pc: 
+                agent_pos = pc[0][2:]
+                intended_pos = [n for n in self.actions if n[1] == 'move'
+                            if n[0] <= action_id][-1][2:]
+            else: 
+                agent_pos = [n for n in self.actions if n[1] == 'move'
+                            if n[0] <= action_id][-1][2:]
+                intended_pos = agent_pos
+
             n_cov = [n for n in range(len(self.cov_inds))
                      if self.cov_inds[n] <= action_id][-1]
             cov_map = self.cov_map[:n_cov+1]
@@ -438,7 +450,7 @@ class SurveySimulation():
                 g_n += 1
             N_g = g_n
 
-            return t, agent_pos, cov_map, contacts, N_g
+            return t, agent_pos, intended_pos, cov_map, contacts, N_g
 
         def load_textfiles(self, save_loc, file_name):
             # find the file that matches
@@ -1201,11 +1213,12 @@ class SurveySimulation():
             else:
                 self.action_id += 1
 
-        t, bp, cm, cn, N_g = self.playback.get_data(self.action_id)
+        t, bp, ip, cm, cn, N_g = self.playback.get_data(self.action_id)
         grps = []
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
         self.plotter.updatetime(t, t)
         self.plotter.updateagent([bp[0], bp[1]])
+        self.plotter.updatetarget(ip)
         self.plotter.updatecovmap(cm)
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)
