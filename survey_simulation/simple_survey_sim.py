@@ -29,7 +29,8 @@ class SurveySimulation():
         self.save_loc = save_loc
         self.end_episode = False
         self.move_complete = True
-        
+        self.play = True
+
         # check mode of operation
         if mode == "manual" or mode == 'test':
             self.params = self.load_params(params_loc)
@@ -45,13 +46,14 @@ class SurveySimulation():
                 map_n = 0
             self.map_setup(map_n)
             self.rt = self.params['rt']
-            self.t_step = self.params['t_step']
             self.agent_pos = self.params['agent_start']
 
             # TODO add ability to load ground truth from file
             self.generate_contacts(self.params)
 
             # instantiate everything
+            self.ais_locs = self.load_aislocs()
+            self.ais_loc = self.get_other_boat_locs(0)
             self.covmap = self.CoverageMap(self.params)
             self.contacts = self.ContactDetections(self.params)
             self.timer = self.Timer(self.params)
@@ -66,8 +68,6 @@ class SurveySimulation():
                 # event handlers
                 self.groupswitch = True
                 self.snaptoangle = False
-                self.play = True
-
                 self.xy_temp = [0,0]
 
                 # mouse and key event handlers
@@ -79,7 +79,12 @@ class SurveySimulation():
                                                           self.on_pick)
                 self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
                                                           self.on_key_manual)
-                plt.show()
+                
+                if not self.rt:
+                    plt.show()
+                else:
+                    plt.show(block=False)
+                    self.run_realtime()
 
                 '''
                 try:
@@ -163,24 +168,63 @@ class SurveySimulation():
                 raise ValueError("Invalid move action. Should be [x,y]")
             else:
                 self.add_newxy(action[0], action[1])
-                cov_map = self.covmap.map_stack[-1]
-                t = self.timer.time_remaining
-                cntcts = self.contacts.detections
-                return t, cov_map, cntcts, self.map_mask
+                if not self.rt: 
+                    cov_map = self.covmap.map_stack[-1]
+                    t = self.timer.time_remaining
+                    cntcts = self.contacts.detections
+                    return t, cov_map, cntcts, self.map_mask
 
         elif action_type == 'group':
             self.add_group(action)
         elif action_type == 'ungroup':
             self.remove_group(action)
 
+    def run_realtime(self):
+        rfr = 0.1
+        self.move_req = False
+        
+        # get params
+        self.play_speed = self.params['play_speed']
+        agent_speed = self.params['agent_speed']
+
+        # initialise positions
+        self.agent_xy0 = self.agent_pos
+        self.xy_target = self.agent_pos
+        self.d = 0
+        self.d_final = 0
+
+        self.compute_movement_step()
+
+        while True:
+            plt.pause(rfr) 
+
+            if self.play: 
+                # decrease time
+                self.timer.update_time(self.play_speed*rfr)
+                # update other boat locations
+                self.ais_loc = self.get_other_boat_locs(self.timer.time_elapsed)
+                # if there's a move request travel
+                if self.move_req:
+                    self.travel_one_step()
+
+                # update plots
+                self.plotter.updateagent(self.agent_pos)
+                self.plotter.updatetime(self.timer.time_remaining,
+                                        self.timer.time_temp)
+                self.plotter.update_temp(self.agent_pos[0], self.agent_pos[1], 
+                                            self.xy_temp[0], self.xy_temp[1])
+                self.plotter.updateaislocs(self.ais_loc)
+                self.plotter.fig.canvas.draw()
+
     def updatescans(self):
-        # once the move is complete add scan and contacts
+        # add scan and contacts
         xend, yend = self.agent_pos[0], self.agent_pos[1]
         x0, y0  = self.agent_xy0[0], self.agent_xy0[1]
         rc, ang = self.covmap.add_scan(x0, y0,
                             xend, yend)
         obs_str = self.contacts.add_dets(self.contacts_t, rc, ang)
-        self.updateplots()
+        if self.mode == 'manual':
+            self.updateplots()
         # add move request to logger
         if not self.move_complete:
             self.logger.addplanchange(self.agent_pos[0],self.agent_pos[1])
@@ -197,52 +241,80 @@ class SurveySimulation():
         self.plotter.remove_temp()
         self.plotter.fig.canvas.draw()
 
-    def add_newxy(self, x, y):
-        # if real-time switch is on, travel to target. If off, instantaneously travel to target
-        if self.rt:
-            self.plotter.updatetarget((x,y))
-            self.move_complete = False
-            # Get the start position of the scan
-            x0, y0 = self.agent_pos[0], self.agent_pos[1]
-            self.agent_xy0 = (x0,y0)
-            agent_speed = self.params['agent_speed']
-            t_step = self.params['t_step']
-            x_prev, y_prev = x0, y0
-            d = 0 
+    def movement_request(self, x, y): 
 
-            # get move complete distance
-            d_final = np.sqrt((x-x0)**2 + (y-y0)**2)
+        self.xy_target = (x, y)
+        self.move_req = True
+        self.move_complete = False
+        # Get the start position of the scan
+        x0, y0 = self.agent_pos[0], self.agent_pos[1]
+        self.agent_xy0 = (x0, y0)
+        self.xy_prev = (x0, y0)
+        self.d = 0 
 
-            # Get the angle of the path
-            heading = np.arctan2(x-x0, y-y0)
-            d_step = agent_speed*t_step
-            x_step, y_step = d_step*np.sin(heading), d_step*np.cos(heading) 
+        if self.mode == 'manual':
+            self.plotter.updatetarget((x,y), (x0, y0))
 
-            # add movement request to logger
-            self.logger.addmove(x,y)
+        # get move complete distance
+        self.d_final = np.sqrt((x-x0)**2 + (y-y0)**2)
+        self.compute_movement_step()
+        
+        # add movement request to logger
+        self.logger.addmove(x,y)
 
-            while not self.move_complete:
-                plt.pause(0.1)
-                if self.play:
-                    d = d+d_step
-                    if d<d_final:
-                        # move towards target
-                        self.agent_pos = [x_prev+x_step, y_prev+y_step]
-                        self.timer.update((x_prev, y_prev), self.agent_pos)
-                        self.plotter.updatetime(self.timer.time_remaining,
+    def compute_movement_step(self):
+        agent_speed = self.params['agent_speed']
+
+        x0, y0 = self.agent_xy0[0], self.agent_xy0[1]
+        x, y = self.xy_target[0], self.xy_target[1]
+
+        heading = np.arctan2(x-x0, y-y0)
+        self.d_step = agent_speed*self.play_speed
+        self.xy_step = (self.d_step*np.sin(heading), self.d_step*np.cos(heading))
+        
+    def travel_to_target(self):
+        while not self.move_complete:
+            if self.play:
+                self.travel_one_step()
+                if self.mode == 'manual':
+                    self.plotter.updateaislocs(self.ais_loc)
+                    self.plotter.update_temp(self.agent_pos[0], self.agent_pos[1], 
+                                            self.xy_temp[0], self.xy_temp[1])
+                    self.plotter.updatetime(self.timer.time_remaining,
                                                 self.timer.time_remaining)
-                        self.plotter.update_temp(self.agent_pos[0], self.agent_pos[1], 
-                                                 self.xy_temp[0], self.xy_temp[1])
-                        x_prev, y_prev = self.agent_pos[0], self.agent_pos[1]
-                    else: 
-                        self.agent_pos = [x, y]
-                        self.timer.update((x_prev, y_prev), self.agent_pos)
-                        self.plotter.updatetime(self.timer.time_remaining,
-                                                self.timer.time_remaining)
-                        self.move_complete = True
                     self.plotter.updateagent(self.agent_pos)
+            plt.pause(0.1)
+
+        self.updatescans()
+
+    def travel_one_step(self):
+        self.d = self.d+self.d_step
+        if self.d<self.d_final:
+            # move towards target
+            self.agent_pos = [self.xy_prev[0]+self.xy_step[0], 
+                                self.xy_prev[1]+self.xy_step[1]]
+            self.xy_prev = (self.agent_pos[0], self.agent_pos[1])
+        else: 
+            self.agent_pos = self.xy_target
+            self.move_complete = True
+            self.move_req = False
             self.updatescans()
 
+    def continue_to_target(self):
+        self.travel_one_step()
+        # output whether the move is complete, the current position, how long left and 
+        # TODO the locations of other vessels 
+        return self.move_complete, self.agent_pos, self.timer.time_remaining
+
+    def add_newxy(self, x, y):
+        # if real-time switch is on, travel to target. If off, instantaneously arrive at target
+        if self.rt:
+            self.movement_request(x,y)
+            if self.mode == 'manual':
+                pass
+                #self.travel_to_target()
+            else: 
+                self.travel_one_step()
         else:
             # add new scan to coverage map
             x0, y0 = self.agent_pos[0], self.agent_pos[1]
@@ -254,13 +326,13 @@ class SurveySimulation():
             self.timer.update((x0, y0), (x, y))
 
             # logging
-            self.logger.addmove(x, y, self.covmap.map_stack[-1])
+            self.logger.addmove(x, y)
             self.logger.addcovmap(self.covmap.map_stack[-1])
             self.logger.addobservation(obs_str, self.timer.time_remaining)
 
-        # if manual mode, also plot
-        if self.mode == 'manual':
-            self.updateplots()
+            # if manual mode, also plot
+            if self.mode == 'manual':
+                self.updateplots()
 
     def add_group(self, c_inds):
         self.contacts.dets_to_clus(c_inds)
@@ -386,6 +458,24 @@ class SurveySimulation():
             if self.map_mask[yout,xout]: 
                 return 0 
         return 1
+
+    def load_aislocs(self):
+        ais_locstemp = []
+        with open('AISLocations') as fh: 
+            for line in fh: 
+                if line.strip():
+                    ais_locstemp.append([float(item)
+                                   for item in line.strip().split()])
+        ais_locs = []
+        for n_ind in range(int(ais_locstemp[-1][0])+1):      
+            ais_locs.append(np.array([lt[1:] for lt in ais_locstemp 
+                                if int(lt[0]) == n_ind]))
+        return ais_locs
+
+    def get_other_boat_locs(self, t):
+        locs = [[np.interp(t, self.ais_locs[n2][:,0], self.ais_locs[n2][:,n]) for n in [1, 2]] 
+                for n2 in range(len(self.ais_locs))]
+        return locs
 
     class Playback:
         """ Playback of survey data
@@ -729,25 +819,29 @@ class SurveySimulation():
                         y_out.append(xy_temp[1])
             return x_out, y_out
 
-    class AISLocations:
-        def __init__(self):
-            pass
-
     class Timer:
         def __init__(self, params):
             # get params
             tl = params['time_lim']
             self.bs = params['agent_speed']
             self.time_remaining = tl
+            self.time_elapsed = 0
+            self.time_temp = tl
 
         def update_temp(self, xy1, xy2, xy0):
-            t_rem_temp = (self.time_remaining
+            self.time_temp  = (self.time_remaining
                           - self.elapsedtime(xy1, xy2)
                           - self.elapsedtime(xy2, xy0))
-            return t_rem_temp
+            #return t_rem_temp
 
         def update(self, xy1, xy2):
-            self.time_remaining -= self.elapsedtime(xy1, xy2)
+            t_temp = self.elapsedtime(xy1, xy2)
+            self.time_remaining -= t_temp
+            self.time_elapsed += t_temp
+
+        def update_time(self, t):
+            self.time_remaining -= t
+            self.time_elapsed += t
 
         def elapsedtime(self, xy1, xy2):
             t_elapsed = math.dist(xy1,
@@ -817,11 +911,26 @@ class SurveySimulation():
                                             markeredgecolor="red",
                                             markerfacecolor="red",
                                             zorder=4)
-            # agent track
+            # agent track 
+            # temp
             self.track_plt, = self.ax.plot(self.bs[0], self.bs[1],
                                            '--',
                                            color='lightgrey',
                                            zorder=4)
+            # intended
+            self.track_int_plt, = self.ax.plot(self.bs[0], self.bs[1], 
+                                               ':', 
+                                               color = 'white', 
+                                               zorder=3)
+            # history
+            self.track_hist_plt,  = self.ax.plot(self.bs[0], self.bs[1], 
+                                                 ':',
+                                                 color='lightgrey',
+                                                 zorder=3)
+
+            # other boat locations
+            self.aisplt = []
+
             # coverage map
             self.cov_plt = self.ax.imshow(np.zeros((self.sa[3]-self.sa[2],
                                                     self.sa[1]-self.sa[0],
@@ -904,10 +1013,34 @@ class SurveySimulation():
             x, y = pos[0], pos[1]
             self.agentpos.set_data([x], [y])
 
-        def updatetarget(self, pos):            
-            x, y = pos[0], pos[1]
-            self.target_pos.set_data([x], [y])
+        def updatetrackhist(self, xy0, xy1):
+            pass
 
+        def updatetarget(self, xy, xy0):            
+            x, y = xy[0], xy[1]
+            self.target_pos.set_data([x], [y])
+            self.track_int_plt.set_data((xy0[0],xy[0]), (xy0[1],xy[1]))
+
+        def updateaislocs(self, pos):
+            l_p = len(pos)
+            
+            if self.aisplt:
+                # remove previous plots
+                for n in range (l_p):
+                    self.aisplt[-1].remove()
+                    self.aisplt.pop()
+                
+            for n in range(l_p):
+                self.aisplt.append(plt.scatter(pos[n][0],
+                                                pos[n][1],
+                                                color='white',
+                                                edgecolor='white',
+                                                marker=(3,
+                                                        0,
+                                                        45),
+                                                s=200,
+                                                zorder=4))
+                
         def updatecovmap(self, map_stack):
             m_x = len(map_stack[0][0])
             m_y = len(map_stack[0])
@@ -1065,7 +1198,7 @@ class SurveySimulation():
 
         def addplanchange(self, x, y): 
             self.actions.append(" ".join([str(self.action_id-1),
-                                "planchange",
+                                "update",
                                 "{:.1f}".format(x),
                                 "{:.1f}".format(y),
                                 '\n']))
@@ -1151,19 +1284,30 @@ class SurveySimulation():
                 x, y = x_i, y_i
             self.xy_temp = (x,y)
             st_pos = self.params['agent_start'] 
-            t_tmp = self.timer.update_temp((x0, y0), (x, y), st_pos)
+            self.timer.update_temp((x0, y0), (x, y), st_pos)
             self.plotter.update_temp(x0, y0,
                                      x, y)
             self.plotter.updatetime(self.timer.time_remaining,
-                                    t_tmp)
+                                    self.timer.time_temp)
             if not self.play or self.move_complete:
                 self.plotter.fig.canvas.draw()
 
     def on_key_manual(self, event):
         # normal operation if episode is ongoing
         if not self.end_episode:
-            if event.key == "p":
+            if event.key == " ":
                 self.play = not self.play
+            if event.key == "up":
+                # increase playback speed
+                self.play_speed *= 2
+                print('play speed = ' + str(self.play_speed))
+                self.compute_movement_step()
+            if event.key == "down": 
+                # decrease playback speed
+                self.play_speed *= 0.5
+                print('play speed = ' + str(self.play_speed))
+                self.compute_movement_step()
+
             if event.key == "z":
                 self.snaptoangle = not self.snaptoangle
             if event.key == 'shift':
@@ -1218,7 +1362,7 @@ class SurveySimulation():
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
         self.plotter.updatetime(t, t)
         self.plotter.updateagent([bp[0], bp[1]])
-        self.plotter.updatetarget(ip)
+        self.plotter.updatetarget(ip,ip)
         self.plotter.updatecovmap(cm)
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)
