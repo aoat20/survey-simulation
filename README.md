@@ -25,7 +25,7 @@ ss = survey_simulation.SurveySimulation(mode,
 
 ```
 
-`mode` can be "manual", "test" or "playback". `params_loc` is the location of the parameter file location. `save_loc` is the folder in which to save log files. Log files will be saved to individual folders with incrementing episode numbers.
+`mode` can be "manual", "test" or "playback". `params_loc` is the location of the parameter file location. `save_loc` is the folder in which to save log files. Log files will be saved to individual folders in that folder with incrementing episode numbers.
 
 ### Manual 
 Manual mode is for user operation to generate training data.
@@ -44,7 +44,7 @@ ss.new_action('move',[x, y])
 ss.new_action('group', [c0, c1, c2])
 ss.new_action('ungroup',[g0])
 ```
-"move" action outputs three data objects:
+"move" action outputs four data objects:
 ```python
 t, cov_map, contacts, occ_grid = ss.new_action('move', [x,y])
 ```
@@ -58,7 +58,7 @@ t, cov_map, contacts, occ_grid = ss.new_action('move', [x,y])
   - `angle` - angle from which the detection was made
   - `scan_n` - index of the scan in which the detection was made
   - `group_n` - index of the group to which the detection belongs
-- "occ_grid" is the occupancy grid in image pixel coordinates. 1 is an occupied location and 0 is unoccupied and can therefore be traveled to.
+- "occ_grid" is the occupancy grid in image pixel coordinates. 1 is an occupied location and 0 is unoccupied and can therefore be traveled to. 
 
 To save the episode logs:
 ```python
@@ -101,6 +101,47 @@ ss_pb = survey_simulation.SurveySimulation('playback',
                                           save_loc='data/Episode0')
 
 ```
+## Parameter file
+The parameter file needs to be a txt file with the following entries:
+```
+# Interface settings
+rt: 0
+play_speed: 1
+
+# Agent properties
+agent_start: (125., 142.) 
+scan_width: 20.
+leadinleadout: 5.
+min_scan_l: 10.
+nadir_width: 3.
+agent_speed: 5.
+
+# Map properties
+map_n: 1
+scan_area_lims: (30, 200, 30, 100)
+map_area_lims: (0, 220, 0, 120) 
+grid_res: 10
+
+# Target and clutter stats
+n_targets: 3 
+det_probs: (0.4, 0.9) 
+loc_uncertainty: 3.
+n_clutter: 8 
+det_prob_clutter: 0.1 
+
+# Mission parameters
+time_lim: 500.
+min_scan_angle_diff: 30 
+N_looks: 6 
+N_angles: 6
+rand_seed: 50
+```
+
+Notes:
+- The hash key can be used for comments. 
+- `map_n` can be any value 0-3. 0 will do an empty area and 1-3 are different map environments. 
+- Omitting the `agent_start` value with start the agent at a default position at the edge of each area.
+- `scan_area_lims` and `map_area_lims` are ignored if using a map.
 
 ## Log Files Format
 For an episode with an ID number:
@@ -127,6 +168,7 @@ Episode2_ACTIONS.txt
     2 group 0 0 2
     3 ungroup 0
     4 move 35 20
+    4 update 25 27
     5 move 10 15
     ...
 ```
