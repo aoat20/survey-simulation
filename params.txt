@@ -1,9 +1,9 @@
 # Interface settings
-rt: 1
+rt: 0
 play_speed: 1
 
 # Agent properties
-agent_start: (30., 30.) 
+agent_start: (125., 142.) 
 scan_width: 20.
 leadinleadout: 5.
 min_scan_l: 10.

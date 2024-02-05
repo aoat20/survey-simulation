@@ -83,7 +83,7 @@ class SurveySimulation():
                 if not self.rt:
                     plt.show()
                 else:
-                    plt.show(block=False)
+                    # plt.show(block=False)
                     self.run_realtime()
 
                 '''
@@ -185,7 +185,6 @@ class SurveySimulation():
         
         # get params
         self.play_speed = self.params['play_speed']
-        agent_speed = self.params['agent_speed']
 
         # initialise positions
         self.agent_xy0 = self.agent_pos
@@ -195,26 +194,31 @@ class SurveySimulation():
 
         self.compute_movement_step()
 
-        while True:
-            plt.pause(rfr) 
+        # run at the rfr rate
+        timer = self.plotter.fig.canvas.new_timer(interval=rfr*1000)
+        timer.add_callback(self.rt_loop_callback,rfr)
+        timer.start()
+        plt.show()
 
-            if self.play: 
-                # decrease time
-                self.timer.update_time(self.play_speed*rfr)
-                # update other boat locations
-                self.ais_loc = self.get_other_boat_locs(self.timer.time_elapsed)
-                # if there's a move request travel
-                if self.move_req:
-                    self.travel_one_step()
-
-                # update plots
+    def rt_loop_callback(self,rfr):
+        if self.play: 
+            # decrease time
+            self.timer.update_time(self.play_speed*rfr)
+            # update other boat locations
+            self.ais_loc = self.get_other_boat_locs(self.timer.time_elapsed)
+            # if there's a move request travel
+            if self.move_req:
+                self.travel_one_step()
                 self.plotter.updateagent(self.agent_pos)
-                self.plotter.updatetime(self.timer.time_remaining,
-                                        self.timer.time_temp)
-                self.plotter.update_temp(self.agent_pos[0], self.agent_pos[1], 
-                                            self.xy_temp[0], self.xy_temp[1])
-                self.plotter.updateaislocs(self.ais_loc)
-                self.plotter.fig.canvas.draw()
+
+            # update plots
+            self.plotter.updatetime(self.timer.time_remaining,
+                                    self.timer.time_temp)
+            self.plotter.update_temp(self.agent_pos[0], self.agent_pos[1], 
+                                        self.xy_temp[0], self.xy_temp[1])
+            self.plotter.updateaislocs(self.ais_loc)
+            self.plotter.fig.canvas.draw_idle()
+            #plt.show(block=False)
 
     def updatescans(self):
         # add scan and contacts
@@ -222,6 +226,7 @@ class SurveySimulation():
         x0, y0  = self.agent_xy0[0], self.agent_xy0[1]
         rc, ang = self.covmap.add_scan(x0, y0,
                             xend, yend)
+        self.plotter.updatetrackhist((xend,yend))
         obs_str = self.contacts.add_dets(self.contacts_t, rc, ang)
         if self.mode == 'manual':
             self.updateplots()
@@ -239,7 +244,7 @@ class SurveySimulation():
         self.plotter.updatetime(self.timer.time_remaining,
                                 self.timer.time_remaining)
         self.plotter.remove_temp()
-        self.plotter.fig.canvas.draw()
+        self.plotter.fig.canvas.draw_idle()
 
     def movement_request(self, x, y): 
 
@@ -335,11 +340,13 @@ class SurveySimulation():
                 self.updateplots()
 
     def add_group(self, c_inds):
+        # Add the contacts to a cluster and add to log
         self.contacts.dets_to_clus(c_inds)
         g_n, c_inds = self.contacts.add_group()
         self.logger.addgroup(g_n, c_inds)
 
     def remove_group(self, g_inds):
+        # Get rid of a group
         self.contacts.remove_group(g_inds)
         self.logger.ungroup(g_inds)
 
@@ -395,10 +402,13 @@ class SurveySimulation():
             self.map_mask  = np.where(img_tmp==0, 0, 1)
             print(self.params)
             # Set the agent start position for each map
-            if map_n==1:
-                self.params['agent_start'] = (58.,192.)
-            elif map_n==2:
-                self.params['agent_start'] = (31.,55.)
+            if not 'agent_start' in self.params:
+                if map_n==1:
+                    self.params['agent_start'] = (58.,192.)
+                elif map_n==2:
+                    self.params['agent_start'] = (31.,55.)
+                elif map_n==3:
+                    self.params['agent_start'] = (200., 175)
         else:
             mp = self.params['map_area_lims']
             self.map_mask = np.zeros((mp[3],mp[1]))
@@ -443,8 +453,8 @@ class SurveySimulation():
 
         p = 2*dy - dx
         y = 0
-        xcoordinates = [x1]
-        ycoordinates = [y1]
+        # xcoordinates = [x1]
+        # ycoordinates = [y1]
 
         for x in range(dx + 1):
             xout, yout =  x1 + x*xx + y*yx, y1 + x*xy + y*yy
@@ -925,7 +935,7 @@ class SurveySimulation():
             # history
             self.track_hist_plt,  = self.ax.plot(self.bs[0], self.bs[1], 
                                                  ':',
-                                                 color='lightgrey',
+                                                 color='darkgrey',
                                                  zorder=3)
 
             # other boat locations
@@ -990,6 +1000,8 @@ class SurveySimulation():
             self.det_grp_plt.set_data([], [])
             self.targ_plt.set_data([], [])
             self.target_pos.set_data([], [])
+            self.track_int_plt.set_data([], [])
+            self.track_hist_plt.set_data(self.bs[0], self.bs[1])
             self.updatetime(self.tl, self.tl)
             for p in self.detectionslineplt:
                 p.remove()
@@ -1003,7 +1015,7 @@ class SurveySimulation():
             # add new patch
             p_temp = self.make_patch(x1, x2, y1, y2)
             self.p = self.ax.add_patch(p_temp)
-
+        
         def remove_temp(self):
             self.p.remove()
             self.p = self.ax.add_patch(self.p_empty)
@@ -1013,8 +1025,10 @@ class SurveySimulation():
             x, y = pos[0], pos[1]
             self.agentpos.set_data([x], [y])
 
-        def updatetrackhist(self, xy0, xy1):
-            pass
+        def updatetrackhist(self, xy1):
+            xy = self.track_hist_plt.get_data()
+            self.track_hist_plt.set_data(np.append(xy[0],xy1[0]),
+                                         np.append(xy[1],xy1[1]))
 
         def updatetarget(self, xy, xy0):            
             x, y = xy[0], xy[1]
@@ -1031,7 +1045,7 @@ class SurveySimulation():
                     self.aisplt.pop()
                 
             for n in range(l_p):
-                self.aisplt.append(plt.scatter(pos[n][0],
+                self.aisplt.append(self.ax.scatter(pos[n][0],
                                                 pos[n][1],
                                                 color='white',
                                                 edgecolor='white',
@@ -1289,8 +1303,8 @@ class SurveySimulation():
                                      x, y)
             self.plotter.updatetime(self.timer.time_remaining,
                                     self.timer.time_temp)
-            if not self.play or self.move_complete:
-                self.plotter.fig.canvas.draw()
+            if not self.play or not self.rt:
+                self.plotter.fig.canvas.draw_idle()
 
     def on_key_manual(self, event):
         # normal operation if episode is ongoing
@@ -1321,14 +1335,14 @@ class SurveySimulation():
                 if c_inds:
                     # update plot
                     self.plotter.updategroups(self.contacts.det_grp)
-                    self.plotter.fig.canvas.draw()
+                    # self.plotter.fig.canvas.draw()
                     # log new grouping
                     self.logger.addgroup(g_n, c_inds)
 
             elif event.key == '#':
                 self.plotter.reveal_targets(self.contacts_t)
                 self.plotter.remove_temp()
-                self.plotter.fig.canvas.draw()
+                #self.plotter.fig.canvas.draw()
                 self.end_episode = True
 
             elif event.key == '=':
@@ -1339,10 +1353,12 @@ class SurveySimulation():
 
         # can reset at any time
         if event.key == 'enter':
+            self.move_complete = True
+            self.move_req = False
             self.reset()
             self.end_episode = False
 
-        self.plotter.fig.canvas.draw()
+        self.plotter.fig.canvas.draw_idle()
 
     def on_key_playback(self, event):
         if event.key == 'left':
@@ -1366,7 +1382,7 @@ class SurveySimulation():
         self.plotter.updatecovmap(cm)
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)
-        self.plotter.fig.canvas.draw()
+        self.plotter.fig.canvas.draw_idle()
 
     def on_click(self, event):
         if event.inaxes != self.plotter.ax.axes:
@@ -1396,10 +1412,10 @@ class SurveySimulation():
 
                 else:
                     self.plotter.p.set_facecolor((1, 1, 1))
-                    self.plotter.fig.canvas.draw()
+                    self.plotter.fig.canvas.draw_idle()
             else: 
                 self.plotter.p.set_facecolor((1, 1, 1))
-                self.plotter.fig.canvas.draw()
+                self.plotter.fig.canvas.draw_idle()
 
     def on_pick(self, event):
         if not self.end_episode and not self.groupswitch:
@@ -1420,7 +1436,8 @@ class SurveySimulation():
                 self.plotter.updategroups(self.contacts.det_grp)
                 # log ungrouped
                 self.logger.ungroup(g_inds)
-            self.plotter.fig.canvas.draw()
+            if not self.rt:
+                self.plotter.fig.canvas.draw_idle()
 
 
 @dataclass
