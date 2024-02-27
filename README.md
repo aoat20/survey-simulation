@@ -96,6 +96,10 @@ for n in range(100):
 # Save the episode log
 ss.save_episode()
 
+# Save to a specific episode number (CAUTION. This will delete the episode if it already exists)
+episode_number = 2
+ss.save_episode(episode_number)
+
 # Playing back data
 ss_pb = survey_simulation.SurveySimulation('playback',
                                           save_loc='data/Episode0')

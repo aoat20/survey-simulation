@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import math
 import os
+import shutil
 from dataclasses import dataclass
 from PIL import Image
 
@@ -423,15 +424,20 @@ class SurveySimulation():
         self.logger.__init__(self.params, self.contacts_t, self.save_loc)
         self.plotter.reset()
 
-    def save_episode(self):
-        i = 0
-        while os.path.exists(os.path.join(self.save_loc,
-                                          f"Episode{i}",
-                                          "COVERAGE")):
-            i += 1
-        self.logger.save_data(str(i))
-        print('Saving output to Episode '+str(i))
-        self.end_episode = True
+    def save_episode(self, ep_n=[]):
+        if not ep_n:
+            i = 0
+            while os.path.exists(os.path.join(self.save_loc,
+                                            f"Episode{i}",
+                                            "COVERAGE")):
+                i += 1
+            self.logger.save_data(str(i))
+            print('Saving output to Episode '+str(i))
+            self.end_episode = True
+        else: 
+            self.logger.save_data(ep_n)
+            print('Saving output to Episode '+str(ep_n))
+            self.end_episode = True
 
     def check_path(self, x1i, y1i, x2i, y2i): 
         x1, y1 = round(x1i), round(y1i)
@@ -1262,6 +1268,12 @@ class SurveySimulation():
         def save_data(self, ep_ID):
             ep_str = 'Episode' + str(ep_ID)
             fold_loc = os.path.join(self.save_loc, ep_str)
+
+            # if the folder already exists, delete it
+            if os.path.exists(os.path.join(fold_loc,'COVERAGE')):
+                shutil.rmtree(fold_loc)
+            
+            # Make the new directory
             os.makedirs(os.path.join(fold_loc, 'COVERAGE'))
             # Write actions
             self.actions.append(" ".join([str(self.action_id),
