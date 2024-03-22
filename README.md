@@ -16,16 +16,16 @@ pip install git+https://github.com/aoat20/survey-simulation
 ```
 
 ## Usage
-Import the package and initialise a sim object with mode, param file location and save location:
+Import the package and initialise a sim object with mode, param filepath and save directory:
 ```python 
 import survey_simulation
 ss = survey_simulation.SurveySimulation(mode,
-                                       params_loc,
-                                       save_loc)
+                                       params_filepath,
+                                       save_dir)
 
 ```
 
-`mode` can be "manual", "test" or "playback". `params_loc` is the location of the parameter file location. `save_loc` is the folder in which to save log files. Log files will be saved to individual folders in that folder with incrementing episode numbers.
+`mode` can be "manual", "test" or "playback". `params_filepath` is the location of the parameter file location. `save_dir` is the directory in which to save log files. Log files will be saved to individual folders in that folder with incrementing episode numbers.
 
 ### Manual 
 Manual mode is for user operation to generate training data.
@@ -67,6 +67,7 @@ ss.save_episode()
 
 ### Playback
 Playback mode is for playing back episode logs. "left" and "right" keys go backwards and forwards through actions.
+`save_dir` is directory of your logs and the extra argument `ep_n` is the episode number to load.
 
 ## Demo
 
@@ -76,13 +77,13 @@ import numpy as np
 
 # example manual run
 ss = survey_simulation.SurveySimulation('manual',
-                                       save_loc='data',
-                                       params_loc='params.txt')
+                                       save_dir='data',
+                                       params_filepath='params.txt')
 
 # example test run
 ss = survey_simulation.SurveySimulation('test',
-                                       save_loc='data',
-                                       params_loc='params.txt')
+                                       save_dir='data',
+                                       params_filepath='params.txt')
 for n in range(100):
     rnd_mv = np.random.randint(0,100,size=(2)).tolist()
     t, cov_map, contacts, occ_grid = ss.new_action('move', rnd_mv)
@@ -102,7 +103,8 @@ ss.save_episode(episode_number)
 
 # Playing back data
 ss_pb = survey_simulation.SurveySimulation('playback',
-                                          save_loc='data/Episode0')
+                                          save_dir='data',
+                                          ep_n=2)
 
 ```
 ## Parameter file
@@ -113,7 +115,7 @@ rt: 0
 play_speed: 1
 
 # Agent properties
-agent_start: (125., 142.) 
+agent_start: (55., 190.) 
 scan_width: 20.
 leadinleadout: 5.
 min_scan_l: 10.
@@ -121,9 +123,10 @@ nadir_width: 3.
 agent_speed: 5.
 
 # Map properties
-map_n: 1
-scan_area_lims: (30, 200, 30, 100)
-map_area_lims: (0, 220, 0, 120) 
+#map_n: 1
+#map_path: "maps/Map1.png"
+scan_area_lims: (0, 200, 0, 120)
+map_area_lims: (0, 200, 0, 120) 
 grid_res: 10
 
 # Target and clutter stats
@@ -138,14 +141,19 @@ time_lim: 500.
 min_scan_angle_diff: 30 
 N_looks: 6 
 N_angles: 6
-rand_seed: 50
+#rand_seed: 50
 ```
 
 Notes:
 - The hash key can be used for comments. 
-- `map_n` can be any value 0-3. 0 will do an empty area and 1-3 are different map environments. 
-- Omitting the `agent_start` value with start the agent at a default position at the edge of each area.
-- `scan_area_lims` and `map_area_lims` are ignored if using a map.
+- `map_n` can be any value 1-3, each for a different default map environment. If `agent_start` is omitted will default to a preset shore side location.
+- `map_path` is used for custom maps and should point to the directory of a png with transparency indicating the water. Remember to set `agent_start` parameter. 
+- If both `map_n` and `map_path` are omitted, a blank map will be used and the `scan_area_lims` will be used to generate the size of the map. `scan_area_lims` and `map_area_lims` are ignored if using a map.
+- All of these parameters can be modified by passing the relevant argument to the class upon instantiation of the SurveySimulation object, for example, to change the agent start position:
+```python 
+ss = survey_simulation.SurveySimulation('manual',
+                                       agent_start=[20,50]))
+``` 
 
 ## Log Files Format
 For an episode with an ID number:
@@ -229,24 +237,25 @@ Episode2_TRUTH.txt
 ### Meta data
 Stored in the EpisodeID_META.txt, contains the following parameters which are required to recreate the episode. eg. 
 ```
-agent_start: [30.0, 30.0]
-map_n: 2
+rt: 0
+play_speed: 1
+agent_start: [0, 0]
 scan_width: 20.0
 leadinleadout: 5.0
 min_scan_l: 10.0
 nadir_width: 3.0
-agent_speed: 20.0
-scan_area_lims: [30, 200, 30, 100]
-map_area_lims: [0, 220, 0, 120]
+agent_speed: 5.0
+scan_area_lims: [0, 200, 0, 120]
+map_area_lims: [0, 200, 0, 120]
+grid_res: 10
 n_targets: 3
-n_clutter: 5
 det_probs: [0.4, 0.9]
 loc_uncertainty: 3.0
+n_clutter: 8
 det_prob_clutter: 0.1
 time_lim: 500.0
 min_scan_angle_diff: 30
 N_looks: 6
 N_angles: 6
-grid_res: 10
-rand_seed: 100
+rand_seed: 50
 ```
