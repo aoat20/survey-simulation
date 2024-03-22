@@ -3,7 +3,7 @@ rt: 0
 play_speed: 1
 
 # Agent properties
-agent_start: (125., 142.) 
+agent_start: (55., 190.) 
 scan_width: 20.
 leadinleadout: 5.
 min_scan_l: 10.
@@ -11,9 +11,10 @@ nadir_width: 3.
 agent_speed: 5.
 
 # Map properties
-map_n: 1
-scan_area_lims: (30, 200, 30, 100)
-map_area_lims: (0, 220, 0, 120) 
+#map_n: 1
+map_path: "maps/Map1.png"
+scan_area_lims: (0, 200, 0, 120)
+map_area_lims: (0, 200, 0, 120) 
 grid_res: 10
 
 # Target and clutter stats

@@ -8,16 +8,17 @@ import shutil
 from dataclasses import dataclass
 from PIL import Image
 
-
 class SurveySimulation():
     """_summary_
     """
 
     def __init__(self,
                  mode='manual',
-                 params_loc='params.txt',
-                 save_loc='data',
-                 output=False):
+                 params_filepath='params.txt',
+                 save_dir='data',
+                 ep_n=0, 
+                 **kwargs):
+        
         # Check whether mode of operation is valid
         modes = ['manual',
                  'test',
@@ -25,33 +26,69 @@ class SurveySimulation():
         if mode not in modes:
             raise ValueError("Invalid mode. Expected one of: %s" % modes)
 
-        #
+        # initiate flags
         self.mode = mode
-        self.save_loc = save_loc
+        self.save_dir = save_dir
         self.end_episode = False
         self.move_complete = True
         self.play = True
+           
+        # Load parameters from file
+        if mode == "manual" or mode == "test":
+            self.params = self.load_params(params_filepath)
+        elif mode == "playback":
+            ep_dir = os.path.join(save_dir, "Episode"+str(ep_n))
+            l_dir = os.listdir(ep_dir)
+            p_path = [x for x in l_dir if 'META' in x][0]
+            self.params = self.load_params(os.path.join(ep_dir, p_path))
 
-        # check mode of operation
+        # Modify parameters from arguments
+        for key, value in kwargs.items():
+            print("%s = %s" % (key, value))
+            self.params[key] = value
+
+        # Set random seed
         if mode == "manual" or mode == 'test':
-            self.params = self.load_params(params_loc)
             if 'rand_seed' in self.params.keys():
-                np.random.seed(self.params['rand_seed'])
-            else:
-                np.random.seed(100)
+                np.random.seed(self.params['rand_seed'])     
 
-            # if no map specified, set to no map
-            if 'map_n' in self.params:
-                map_n = self.params['map_n']
-            else:
-                map_n = 0
-            self.map_setup(map_n)
-            self.rt = self.params['rt']
-            self.agent_pos = self.params['agent_start']
+        # Set up the map
+        # if no map specified, set to no map
+        if 'map_n' in self.params:
+            map_n = self.params['map_n']
+            map_path = 'maps/Map'+str(map_n)+'.png'
+        elif 'map_path' in self.params:
+            map_path = self.params['map_path']
+        else:
+            map_path = ''
+        map_img = self.map_setup(map_path)
 
-            # TODO add ability to load ground truth from file
+        # Set the agent start position for each default map
+        if not 'agent_start' in self.params:
+            if map_n==1:
+                self.params['agent_start'] = (58.,192.)
+            elif map_n==2:
+                self.params['agent_start'] = (31.,55.)
+            elif map_n==3:
+                self.params['agent_start'] = (200., 175)
+
+        # Generate contact locations
+        if mode == "manual" or mode == 'test':
             self.generate_contacts(self.params)
 
+        # Set up flags and initial values
+        self.rt = self.params['rt']
+        self.agent_pos = self.params['agent_start']
+        self.agent_pos_hist = [np.array(self.params['agent_start'])]
+        if mode == 'manual':
+            self.groupswitch = True
+            self.snaptoangle = False
+            self.xy_temp = [0,0]
+        if mode == 'playback':
+            self.action_id = 0
+
+        # instantiate all the class objects
+        if mode == "manual" or mode == 'test':
             # instantiate everything
             self.ais_locs = self.load_aislocs()
             self.ais_loc = self.get_other_boat_locs(0)
@@ -60,65 +97,33 @@ class SurveySimulation():
             self.timer = self.Timer(self.params)
             self.logger = self.Logger(self.params,
                                       self.contacts_t,
-                                      save_loc)
-
-            if mode == 'manual':
-                # also add the plotter
-                self.plotter = self.Plotter(self.params)
-
-                # event handlers
-                self.groupswitch = True
-                self.snaptoangle = False
-                self.xy_temp = [0,0]
-
-                # mouse and key event handlers
-                self.plotter.ax.figure.canvas.mpl_connect('button_press_event',
-                                                          self.on_click)
-                self.plotter.ax.figure.canvas.mpl_connect('motion_notify_event',
-                                                          self.mouse_move)
-                self.plotter.ax.figure.canvas.mpl_connect('pick_event',
-                                                          self.on_pick)
-                self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
-                                                          self.on_key_manual)
-                
-                if not self.rt:
-                    plt.show()
-                else:
-                    # plt.show(block=False)
-                    self.run_realtime()
-
-                '''
-                try:
-                    while True:
-                        plt.show(block=False)
-                        xy = list(map(int,
-                                    input("Specify next (x,y):  ").strip().split(',')))
-                        self.add_newxy(xy[0], xy[1])
-                except KeyboardInterrupt:
-                    print('Closing')
-                ''' 
-        elif mode == 'playback':
-            # find the metadata param file
-            l_dir = os.listdir(save_loc)
-            p_loc = [x for x in l_dir if 'META' in x][0]
-            self.params = self.load_params(os.path.join(save_loc, p_loc))
-            self.action_id = 0
-            # if no map specified, set to no map
-            if 'map_n' in self.params:
-                map_n = self.params['map_n']
-            else:
-                map_n = 0
-            self.map_setup(map_n)
-
-            # instantiate the relevant classes
+                                      save_dir)
+        if mode == "manual": 
+            self.plotter = self.Plotter(self.params, map_img)
+        elif mode == "playback": 
             self.contacts = self.ContactDetections(self.params)
-            self.playback = self.Playback(self.save_loc)
-            self.plotter = self.Plotter(self.params)
+            self.playback = self.Playback(ep_dir)
+            self.plotter = self.Plotter(self.params, map_img)
 
-            # connect the event handler
+        # Set up event handlers
+        if mode == "manual":
+            # mouse and key event handlers
+            self.plotter.ax.figure.canvas.mpl_connect('button_press_event',
+                                                        self.on_click)
+            self.plotter.ax.figure.canvas.mpl_connect('motion_notify_event',
+                                                        self.mouse_move)
+            self.plotter.ax.figure.canvas.mpl_connect('pick_event',
+                                                        self.on_pick)
+            self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
+                                                        self.on_key_manual)
+        elif mode == 'playback':
             self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
                                                       self.on_key_playback)
-
+            
+        # Set the simulator off running
+        if self.rt and mode == "manual":
+            self.run_realtime()
+        elif mode == "manual" or mode == "playback":
             plt.show()
 
     def load_params(self,
@@ -142,6 +147,8 @@ class SurveySimulation():
                         else:
                             param_dict[key] = [int(item)
                                                for item in value.split(',')]
+                    elif '"' in value:
+                        param_dict[key] = value[1:-1]
                     else:
                         if "." in value:
                             param_dict[key] = float(value)
@@ -159,12 +166,15 @@ class SurveySimulation():
         action_types = ['move',
                         'group',
                         'ungroup']
+        
+        # Check action type
         if action_type not in action_types:
             raise ValueError("Invalid action type. " +
                              "Expected one of: %s" % action_types)
 
         # do action
         if action_type == 'move':
+            # check move is valid
             if not all([isinstance(a, int) for a in action]) and len(action) != 2:
                 raise ValueError("Invalid move action. Should be [x,y]")
             else:
@@ -181,7 +191,7 @@ class SurveySimulation():
             self.remove_group(action)
 
     def run_realtime(self):
-        rfr = 0.1
+        rfr = 0.05
         self.move_req = False
         
         # get params
@@ -219,7 +229,6 @@ class SurveySimulation():
                                         self.xy_temp[0], self.xy_temp[1])
             self.plotter.updateaislocs(self.ais_loc)
             self.plotter.fig.canvas.draw_idle()
-            #plt.show(block=False)
 
     def updatescans(self):
         # add scan and contacts
@@ -227,8 +236,9 @@ class SurveySimulation():
         x0, y0  = self.agent_xy0[0], self.agent_xy0[1]
         rc, ang = self.covmap.add_scan(x0, y0,
                             xend, yend)
-        self.plotter.updatetrackhist((xend,yend))
         obs_str = self.contacts.add_dets(self.contacts_t, rc, ang)
+        self.agent_pos_hist = np.append(self.agent_pos_hist,[[xend,yend]],axis=0)
+
         if self.mode == 'manual':
             self.updateplots()
         # add move request to logger
@@ -242,6 +252,7 @@ class SurveySimulation():
         self.plotter.updatecovmap(self.covmap.map_stack)
         self.plotter.updatecontacts(self.contacts.detections)
         self.plotter.updateagent(self.agent_pos)
+        self.plotter.updatetrackhist(self.agent_pos_hist)
         self.plotter.updatetime(self.timer.time_remaining,
                                 self.timer.time_remaining)
         self.plotter.remove_temp()
@@ -278,21 +289,6 @@ class SurveySimulation():
         self.d_step = agent_speed*self.play_speed
         self.xy_step = (self.d_step*np.sin(heading), self.d_step*np.cos(heading))
         
-    def travel_to_target(self):
-        while not self.move_complete:
-            if self.play:
-                self.travel_one_step()
-                if self.mode == 'manual':
-                    self.plotter.updateaislocs(self.ais_loc)
-                    self.plotter.update_temp(self.agent_pos[0], self.agent_pos[1], 
-                                            self.xy_temp[0], self.xy_temp[1])
-                    self.plotter.updatetime(self.timer.time_remaining,
-                                                self.timer.time_remaining)
-                    self.plotter.updateagent(self.agent_pos)
-            plt.pause(0.1)
-
-        self.updatescans()
-
     def travel_one_step(self):
         self.d = self.d+self.d_step
         if self.d<self.d_final:
@@ -328,6 +324,8 @@ class SurveySimulation():
                                         x, y)
             # check contact detections
             obs_str = self.contacts.add_dets(self.contacts_t, rc, ang)
+            self.agent_pos_hist = np.append(self.agent_pos_hist,[[x,y]],axis=0)
+
             self.agent_pos = [x, y]
             self.timer.update((x0, y0), (x, y))
 
@@ -388,10 +386,10 @@ class SurveySimulation():
         y = rho_r * np.sin(phi_r) + y0
         return x, y
 
-    def map_setup(self, map_n):
-        if map_n:
-            # setup for a custom map
-            img = np.asarray(Image.open('maps/Map'+str(map_n)+'.png'))
+    def map_setup(self, map_path):
+        if map_path:
+            # setup for a default map
+            img = np.asarray(Image.open(map_path))
             img_tmp = img[:,:,0]
             img_nz = np.where(img_tmp==0)
             sa_bounds = (min(img_nz[1]), max(img_nz[1]), 
@@ -402,32 +400,27 @@ class SurveySimulation():
                                             0, img_tmp.shape[0])
             self.map_mask  = np.where(img_tmp==0, 0, 1)
             print(self.params)
-            # Set the agent start position for each map
-            if not 'agent_start' in self.params:
-                if map_n==1:
-                    self.params['agent_start'] = (58.,192.)
-                elif map_n==2:
-                    self.params['agent_start'] = (31.,55.)
-                elif map_n==3:
-                    self.params['agent_start'] = (200., 175)
+            return img
         else:
             mp = self.params['map_area_lims']
             self.map_mask = np.zeros((mp[3],mp[1]))
+            return np.array([])
 
     def reset(self):
         self.generate_contacts(self.params)
         # reinitialise everything
         self.agent_pos = self.params['agent_start']
+        self.agent_pos_hist = [np.array(self.params['agent_start'])]
         self.covmap.__init__(self.params)
         self.contacts.__init__(self.params)
         self.timer.__init__(self.params)
-        self.logger.__init__(self.params, self.contacts_t, self.save_loc)
+        self.logger.__init__(self.params, self.contacts_t, self.save_dir)
         self.plotter.reset()
 
-    def save_episode(self, ep_n=[]):
+    def save_episode(self, ep_n=None):
         if not ep_n:
             i = 0
-            while os.path.exists(os.path.join(self.save_loc,
+            while os.path.exists(os.path.join(self.save_dir,
                                             f"Episode{i}",
                                             "COVERAGE")):
                 i += 1
@@ -440,6 +433,7 @@ class SurveySimulation():
             self.end_episode = True
 
     def check_path(self, x1i, y1i, x2i, y2i): 
+        
         x1, y1 = round(x1i), round(y1i)
         x2, y2 = round(x2i), round(y2i)
         
@@ -459,17 +453,13 @@ class SurveySimulation():
 
         p = 2*dy - dx
         y = 0
-        # xcoordinates = [x1]
-        # ycoordinates = [y1]
 
         for x in range(dx + 1):
             xout, yout =  x1 + x*xx + y*yx, y1 + x*xy + y*yy
             if p >= 0:
                 y += 1
                 p -= 2*dx
-            p += 2*dy
-            #xcoordinates.append(xout)
-            #ycoordinates.append(yout)     
+            p += 2*dy   
                
             if self.map_mask[yout,xout]: 
                 return 0 
@@ -495,26 +485,25 @@ class SurveySimulation():
 
     class Playback:
         """ Playback of survey data
-        Requires location of survey data, save_loc, 
+        Requires location of survey data, save_dir, 
         containing files for ACTIONS, META, OBSERVATIONS and TRUTH, 
         and a COVERAGE folder containing coverage maps
         """
 
-        def __init__(self, save_loc) -> None:
+        def __init__(self, save_dir):
             # load all data
-            self.actions = self.load_textfiles(save_loc, 'ACTIONS')
+            self.actions = self.load_textfiles(save_dir, 'ACTIONS')
             self.ep_end = self.actions[-1][0]
-            self.truth = self.load_textfiles(save_loc, 'TRUTH')
-            self.cov_map, self.cov_inds = self.load_covmaps(save_loc)
-            self.observations = self.load_textfiles(save_loc, 'OBSERVATIONS')
-            print(self.actions)
+            self.truth = self.load_textfiles(save_dir, 'TRUTH')
+            self.cov_map, self.cov_inds = self.load_covmaps(save_dir)
+            self.observations = self.load_textfiles(save_dir, 'OBSERVATIONS')
 
         def get_data(self, action_id):
             print("Action ID: ", action_id)
             # get all the data as it would have been at that action
 
             # check whether there was a plan change at the desired action
-            pc = [n for n in self.actions if n[1] == 'planchange' 
+            pc = [n for n in self.actions if n[1] == 'update' 
                   and n[0] == action_id]
             if pc: 
                 agent_pos = pc[0][2:]
@@ -524,12 +513,15 @@ class SurveySimulation():
                 agent_pos = [n for n in self.actions if n[1] == 'move'
                             if n[0] <= action_id][-1][2:]
                 intended_pos = agent_pos
+            agent_hist = np.array([n[2:] for n in self.actions if n[1] == 'move'
+                        if n[0] <= action_id])           
 
             n_cov = [n for n in range(len(self.cov_inds))
                      if self.cov_inds[n] <= action_id][-1]
             cov_map = self.cov_map[:n_cov+1]
             t = [x[1] for x in self.observations
                  if x[0] <= action_id][-1]
+            
             # Assemble the contacts
             contacts = [Detection(x[2],
                                   x[3],
@@ -556,14 +548,14 @@ class SurveySimulation():
                 g_n += 1
             N_g = g_n
 
-            return t, agent_pos, intended_pos, cov_map, contacts, N_g
+            return t, agent_pos, intended_pos, cov_map, contacts, N_g, agent_hist
 
-        def load_textfiles(self, save_loc, file_name):
+        def load_textfiles(self, save_dir, file_name):
             # find the file that matches
-            loc_dir = os.listdir(save_loc)
-            f_loc = [x for x in loc_dir if file_name in x][0]
+            dir = os.listdir(save_dir)
+            f_dir = [x for x in dir if file_name in x][0]
             # open and read
-            f = open(os.path.join(save_loc, f_loc))
+            f = open(os.path.join(save_dir, f_dir))
             lines = f.readlines()
             # split out the lines
             f_out = [line.split(' ')[0:-1] for line in lines]
@@ -573,8 +565,8 @@ class SurveySimulation():
                     else item for item in line] for line in f_out]
             return data
 
-        def load_covmaps(self, loc_dir):
-            f_dir = os.path.join(loc_dir, 'COVERAGE')
+        def load_covmaps(self, dir):
+            f_dir = os.path.join(dir, 'COVERAGE')
             l_dir = os.listdir(f_dir)
             # get and sort all file names
             files = [filename.split('_') for filename in l_dir]
@@ -868,7 +860,7 @@ class SurveySimulation():
         """_summary_
         """
 
-        def __init__(self, params):
+        def __init__(self, params, map_img):
             # unpack parameters              
             ma = params['map_area_lims']
             gr = params['grid_res']
@@ -903,15 +895,8 @@ class SurveySimulation():
             self.ax.set_ylabel('Northing, m')
 
             # get the map image and show
-            if 'map_n' in params:
-                mp = params['map_n']
-                if mp:
-                    dir_path = os.path.dirname(__file__)
-                    map_path = os.path.join(dir_path,
-                                            '../maps/Map'
-                                            +str(mp)+'.png')
-                    img = np.asarray(Image.open(map_path))
-                    self.ax.imshow(img)
+            if map_img.any():
+                self.ax.imshow(map_img)
 
             # agent position
             self.agentpos, = self.ax.plot(self.bs[0], self.bs[1],
@@ -1031,10 +1016,9 @@ class SurveySimulation():
             x, y = pos[0], pos[1]
             self.agentpos.set_data([x], [y])
 
-        def updatetrackhist(self, xy1):
-            xy = self.track_hist_plt.get_data()
-            self.track_hist_plt.set_data(np.append(xy[0],xy1[0]),
-                                         np.append(xy[1],xy1[1]))
+        def updatetrackhist(self, xy_hist):
+            self.track_hist_plt.set_data(xy_hist[:,0],
+                                         xy_hist[:,1])
 
         def updatetarget(self, xy, xy0):            
             x, y = xy[0], xy[1]
@@ -1164,12 +1148,12 @@ class SurveySimulation():
         """_summary_
         """
 
-        def __init__(self, params, gnd_trth, save_loc) -> None:
+        def __init__(self, params, gnd_trth, save_dir) -> None:
             # unpack params
             bs = params['agent_start']
             tl = params['time_lim']
             sa = params['scan_area_lims']
-            self.save_loc = save_loc
+            self.save_dir = save_dir
             # initialse
             self.action_id = 0
             self.action_id_cov = []
@@ -1262,36 +1246,41 @@ class SurveySimulation():
                                                 '\n']))
 
         def addmeta(self, params):
-            self.metadata = ['\n'.join([': '.join([s, str(params[s])])
-                                       for s in params])]
+            self.metadata = []
+            for s in params:
+                if isinstance(params[s],str):
+                    val = str('"'+params[s]+'"')
+                else:
+                    val = str(params[s])
+                self.metadata.append('\n'+': '.join([s, val]))
 
         def save_data(self, ep_ID):
             ep_str = 'Episode' + str(ep_ID)
-            fold_loc = os.path.join(self.save_loc, ep_str)
+            fold_dir = os.path.join(self.save_dir, ep_str)
 
             # if the folder already exists, delete it
-            if os.path.exists(os.path.join(fold_loc,'COVERAGE')):
-                shutil.rmtree(fold_loc)
+            if os.path.exists(os.path.join(fold_dir,'COVERAGE')):
+                shutil.rmtree(fold_dir)
             
             # Make the new directory
-            os.makedirs(os.path.join(fold_loc, 'COVERAGE'))
+            os.makedirs(os.path.join(fold_dir, 'COVERAGE'))
             # Write actions
             self.actions.append(" ".join([str(self.action_id),
                                           "end "
                                           '\n']))
-            f_act = open(os.path.join(fold_loc, ep_str+'_ACTIONS'), 'w')
+            f_act = open(os.path.join(fold_dir, ep_str+'_ACTIONS'), 'w')
             f_act.writelines(self.actions)
             # write observations
-            f_obs = open(os.path.join(fold_loc, ep_str+'_OBSERVATIONS'), 'w')
+            f_obs = open(os.path.join(fold_dir, ep_str+'_OBSERVATIONS'), 'w')
             f_obs.writelines(self.observations)
             # write ground truth and metadata
-            f_truth = open(os.path.join(fold_loc, ep_str+'_TRUTH'), 'w')
+            f_truth = open(os.path.join(fold_dir, ep_str+'_TRUTH'), 'w')
             f_truth.writelines(self.truth)
-            f_meta = open(os.path.join(fold_loc, ep_str+'_META'), 'w')
+            f_meta = open(os.path.join(fold_dir, ep_str+'_META'), 'w')
             f_meta.writelines(self.metadata)
             # output coverage matrices
             for n in range(len(self.cov)):
-                np.savetxt(os.path.join(fold_loc, 'COVERAGE',
+                np.savetxt(os.path.join(fold_dir, 'COVERAGE',
                                         ep_str+"_"+str(self.action_id_cov[n])+"_COVERAGE"),
                            self.cov[n])
 
@@ -1375,21 +1364,22 @@ class SurveySimulation():
     def on_key_playback(self, event):
         if event.key == 'left':
             if self.action_id == 0:
-                pass
+                return
             else:
                 self.action_id -= 1
 
         elif event.key == 'right':
             if self.action_id >= self.playback.ep_end:
-                pass
+                return
             else:
                 self.action_id += 1
 
-        t, bp, ip, cm, cn, N_g = self.playback.get_data(self.action_id)
+        t, bp, ip, cm, cn, N_g, ah = self.playback.get_data(self.action_id)
         grps = []
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
         self.plotter.updatetime(t, t)
         self.plotter.updateagent([bp[0], bp[1]])
+        self.plotter.updatetrackhist(ah)
         self.plotter.updatetarget(ip,ip)
         self.plotter.updatecovmap(cm)
         self.plotter.updatecontacts(cn)
