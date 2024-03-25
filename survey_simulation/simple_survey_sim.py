@@ -85,6 +85,8 @@ class SurveySimulation():
         ap = self.agent_pos
         if ap[0]<ml[0] or ap[0]>ml[1] or ap[1]<ml[2] or ap[1]>ml[3]:
             raise Exception("agent_start is not within the bounds of the map")
+        if self.map_mask[ap[0],ap[1]]:
+            raise Exception("agent_start is on an occupied coordinate of the map")
 
         if mode == 'manual':
             self.groupswitch = True
