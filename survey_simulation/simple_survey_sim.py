@@ -80,6 +80,12 @@ class SurveySimulation():
         self.rt = self.params['rt']
         self.agent_pos = self.params['agent_start']
         self.agent_pos_hist = [np.array(self.params['agent_start'])]
+        # Check if agent start position is in the map bounds
+        ml = self.params['map_area_lims']
+        ap = self.agent_pos
+        if ap[0]<ml[0] or ap[0]>ml[1] or ap[1]<ml[2] or ap[1]>ml[3]:
+            raise Exception("agent_start is not within the bounds of the map")
+
         if mode == 'manual':
             self.groupswitch = True
             self.snaptoangle = False
