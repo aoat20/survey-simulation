@@ -44,6 +44,7 @@ class SurveySimulation():
 
         # Modify parameters from arguments
         for key, value in kwargs.items():
+            print('Overwriting the following parameters:')
             print("%s = %s" % (key, value))
             self.params[key] = value
 
@@ -361,6 +362,10 @@ class SurveySimulation():
         # get relevant params
         nt = params['n_targets']
         nc = params['n_clutter']
+        dp = params['det_probs']
+        dpc = params['det_probs_clutter']
+        com = params['clutter_or_mean']
+        cos = params['clutter_or_std']
         nz_i = np.where(self.map_mask == 0)
 
         self.contacts_t = []
@@ -371,7 +376,8 @@ class SurveySimulation():
                                                 'Target',
                                                 (nz_i[1][n_rnd],
                                                  nz_i[0][n_rnd]),
-                                                round(np.random.uniform(0, 360))))
+                                                round(np.random.uniform(0, 360)),
+                                                dp))
         # generate non-target contacts
         for n in np.arange(nc):
             n_rnd = np.random.randint(0,len(nz_i[0]))
@@ -379,7 +385,8 @@ class SurveySimulation():
                                                 'Clutter',
                                                 (nz_i[1][n_rnd],
                                                  nz_i[0][n_rnd]),
-                                                np.random.uniform(0, 360)))
+                                                np.random.normal(com, cos), 
+                                                dpc))
 
     def round_to_angle(self, x0, y0, x1, y1):
         ang_r = 10
@@ -407,7 +414,6 @@ class SurveySimulation():
             self.params['map_area_lims'] = (0, img_tmp.shape[1], 
                                             0, img_tmp.shape[0])
             self.map_mask  = np.where(img_tmp==0, 0, 1)
-            print(self.params)
             return img
         else:
             mp = self.params['map_area_lims']
@@ -705,8 +711,6 @@ class SurveySimulation():
             self.group_n = 0
             # unpack relevant params
             self.lu = params['loc_uncertainty']
-            self.dp = params['det_probs']
-            self.dpc = params['det_prob_clutter']
             self.sa = params['scan_area_lims']
 
         def dets_to_clus(self, c_inds):
@@ -821,14 +825,16 @@ class SurveySimulation():
                 # if all signs the same, point is in rectangle
                 if len(set(ABCD_s)) == 1 and rect_corners.any():
                     # check whether it's target or clutter
-                    if xy.obj_class == 'Target':
-                        rng_tmp = self.dp[1] - self.dp[0]
-                        det_prob = (self.dp[0]
-                                    + rng_tmp/2
-                                    + np.cos(np.abs(xy.orientation
-                                                    - scan_angle))*rng_tmp/2)
-                    elif xy.obj_class == 'Clutter':
-                        det_prob = self.dpc
+                    #if xy.obj_class == 'Target':
+                    rng_tmp = xy.det_probs[1] - xy.det_probs[0]
+                    wrapped_angdiff = np.arctan(np.tan(np.deg2rad(xy.orientation)
+                                                - np.deg2rad(scan_angle)))
+                    det_prob_temp = (np.abs(np.rad2deg(wrapped_angdiff))-1)/90
+                    det_prob = (xy.det_probs[0]
+                                + det_prob_temp*rng_tmp)
+
+                    #elif xy.obj_class == 'Clutter':
+                    #    det_prob = self.dpc
                     # check whether it gets detected
                     if det_prob > np.random.uniform(0, 1):
                         x_out.append(xy_temp[0])
@@ -1456,6 +1462,7 @@ class TargetObject:
     obj_class: str
     location: float
     orientation: float
+    det_probs: list
 
 
 @dataclass
