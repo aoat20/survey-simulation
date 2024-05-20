@@ -3,7 +3,7 @@ rt: 0
 play_speed: 1
 
 # Agent properties
-agent_start: (55., 190.) 
+#agent_start: (55., 190.) 
 scan_width: 20.
 leadinleadout: 5.
 min_scan_l: 10.
@@ -11,8 +11,8 @@ nadir_width: 3.
 agent_speed: 5.
 
 # Map properties
-#map_n: 1
-map_path: "maps/Map1.png"
+map_n: 1
+#map_path: "maps/Map1.png"
 scan_area_lims: (0, 200, 0, 120)
 map_area_lims: (0, 200, 0, 120) 
 grid_res: 10
@@ -22,8 +22,9 @@ n_targets: 3
 det_probs: (0.4, 0.9) 
 loc_uncertainty: 3.
 n_clutter: 100
-det_probs_clutter: (0.05, 0.11) 
-clutter_or_mean: 90
+clutter_dens: 0.02
+det_probs_clutter: (0.01, 0.05) 
+clutter_or_mean: 45
 clutter_or_std: 0
 
 # Mission parameters
