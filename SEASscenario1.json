@@ -1,0 +1,18 @@
+{
+    "vessel_details": [
+        {
+            "vessel": "CandidateMass",
+            "speed": 10,
+            "course": 90, 
+            "waypoints": [[50.209767, -4.174147],
+                          [50.302217, -4.159364]]
+        },
+        {
+            "vessel": "CruiseLiner",
+            "speed": 10,
+            "course": 330, 
+            "waypoints": [[50.156267, -4.033694],
+                          [50.209342, -3.914953]]
+        }
+    ]
+}

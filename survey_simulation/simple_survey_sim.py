@@ -220,8 +220,8 @@ class SurveySimulation():
         # plotting
         self.plotter.updatecovmap(self.covmap.map_stack)
         self.plotter.updatecontacts(self.contacts.detections)
-        self.plotter.updateagent(self.agent.xy)
-        self.plotter.updatetrackhist(self.agent.xy_hist)
+        self.plotter.agent.updateagent(self.agent.xy)
+        self.plotter.agent.updatetrackhist(self.agent.xy_hist)
         self.plotter.updatetime(self.timer.time_remaining,
                                 self.timer.time_remaining)
         self.plotter.remove_temp()
@@ -383,9 +383,9 @@ class SurveySimulation():
         grps = []
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
         self.plotter.updatetime(t, t)
-        self.plotter.updateagent([bp[0], bp[1]])
-        self.plotter.updatetrackhist(ah)
-        self.plotter.updatetarget(ip,ip)
+        self.plotter.agent.updateagent([bp[0], bp[1]])
+        self.plotter.agent.updatetrackhist(ah)
+        self.plotter.agent.updatetarget(ip,ip)
         self.plotter.updatecovmap(cm)
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)

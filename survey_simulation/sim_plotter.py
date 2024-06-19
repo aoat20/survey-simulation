@@ -10,7 +10,13 @@ class Plotter:
 
     def show(self,
              blocking=True):
-        plt.show(block=blocking)
+        if not blocking:
+            plt.ion()
+        plt.show()
+
+    def draw(self):
+        self.fig.canvas.draw_idle()
+        plt.pause(0.0001)
 
     def reset(self):
         self.updateagent([self.bs[0], self.bs[1]])
@@ -31,8 +37,7 @@ class Plotter:
     
     def setup(self, 
               map_lims,
-              grid_size, 
-              map_img):
+              grid_size):
         # set up empty plot
         self.fig, self.ax = plt.subplots()
         self.ax.set_xlim(xmin=map_lims[0],
@@ -43,18 +48,18 @@ class Plotter:
                         linestyle='-',
                         linewidth=0.2)
         self.ax.set_axisbelow(True)
-        self.ax.set_xticks(np.arange(map_lims[0],
-                                     map_lims[1], grid_size))
-        self.ax.set_yticks(np.arange(map_lims[2],
-                                     map_lims[3], grid_size))
+        #self.ax.set_xticks(np.arange(map_lims[0],
+        #                             map_lims[1], grid_size))
+        #self.ax.set_yticks(np.arange(map_lims[2],
+        #                             map_lims[3], grid_size))
         
         self.ax.set_xlabel('Easting, m')
         self.ax.set_ylabel('Northing, m')
 
+    def setup_map(self, map_img):
         # get the map image and show
-        if map_img:
-            if map_img.any():
-                self.ax.imshow(map_img)
+        if map_img.any():
+            self.ax.imshow(map_img)
 
     def setup_agent(self, xy0):
         # agent position
@@ -75,12 +80,12 @@ class Plotter:
         # temp
         self.track_plt, = self.ax.plot(xy0[0], xy0[1],
                                         '--',
-                                        color='lightgrey',
+                                        color='grey',
                                         zorder=4)
         # intended
         self.track_int_plt, = self.ax.plot(xy0[0], xy0[1], 
                                             ':', 
-                                            color = 'white', 
+                                            color = 'lightgrey', 
                                             zorder=3)
         # history
         self.track_hist_plt,  = self.ax.plot(xy0[0], xy0[1], 
@@ -100,6 +105,12 @@ class Plotter:
         x, y = xy[0], xy[1]
         self.target_pos.set_data([x], [y])
         self.track_int_plt.set_data((xy0[0],xy[0]), (xy0[1],xy[1]))
+
+    def updatecourse(self, xy0, course):
+        course_rad = np.deg2rad(90-course)
+        xy1 = (xy0[0]+100000*np.cos(course_rad),
+               xy0[1]+100000*np.sin(course_rad))
+        self.track_int_plt.set_data((xy0[0],xy1[0]), (xy0[1],xy1[1]))
 
     def updateaislocs(self, pos):
         l_p = len(pos)
@@ -241,6 +252,9 @@ class Plotter:
     def updatetime(self, t, t_tmp):
         self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(t_tmp, t))
 
+    def updateps(self, playspeed):
+        self.ax.set_title("Playspeed: {:.0f}x".format(playspeed))
+
     def reveal_targets(self, contacts_t):
         n_targets = [i for i, x in enumerate(contacts_t, 1)
                         if x.obj_class == 'Target'][-1]
@@ -260,6 +274,11 @@ class Plotter:
                                         min_scan_l,
                                         scan_width)
         self.p = self.ax.add_patch(self.p_empty)  
+        # temp
+        self.track_plt, = self.ax.plot([0], [0],
+                                            '--',
+                                            color='grey',
+                                            zorder=4)
 
     def update_temp(self, 
                     x1, 
@@ -316,6 +335,66 @@ class Plotter:
                                     alpha=0.5,
                                     zorder=1)
 
+    class AgentPlot:
+        def __init__(self, ax, xy0, col='blue'):
+            # agent position
+            self.agentpos, = ax.plot(xy0[0], xy0[1],
+                                            marker='o',
+                                            markersize=10,
+                                            markeredgecolor='blue',
+                                            markerfacecolor=col,
+                                            zorder=5)
+            
+
+            self.target_pos, = ax.plot([],
+                                            [],
+                                            marker="x",
+                                            markersize=10,
+                                            markeredgecolor="red",
+                                            markerfacecolor="red",
+                                            zorder=4)
+            # agent track 
+
+            # intended
+            self.track_int_plt, = ax.plot(xy0[0], xy0[1], 
+                                                ':', 
+                                                color = 'lightgrey', 
+                                                zorder=3)
+            # history
+            self.track_hist_plt,  = ax.plot(xy0[0], xy0[1], 
+                                                    ':',
+                                                    color='darkgrey',
+                                                    zorder=3)
+
+            self.txtlbl = ax.annotate(f'Speed:{0:.2f} \nCourse:{0:.0f}', 
+                                      xy0)
+            
+        def updateagent(self, xy):            
+            x, y = xy[0], xy[1]
+            self.agentpos.set_data([x], [y])
+
+        def updatetrackhist(self, xy_hist):
+            self.track_hist_plt.set_data(xy_hist[:,0],
+                                         xy_hist[:,1])
+
+        def updatetarget(self, xy, xy0):            
+            x, y = xy[0], xy[1]
+            self.target_pos.set_data([x], [y])
+            self.track_int_plt.set_data((xy0[0],xy[0]), 
+                                        (xy0[1],xy[1]))
+
+        def updatecourse(self, xy0, course):
+            course_rad = np.deg2rad(90-course)
+            xy1 = (xy0[0]+100000*np.cos(course_rad),
+                xy0[1]+100000*np.sin(course_rad))
+            self.track_int_plt.set_data((xy0[0],xy1[0]), 
+                                        (xy0[1],xy1[1]))
+            self.agentpos.set_marker((3,0,-course))
+            
+        def addspeedandcourse(self, xy, speed, course):
+            self.txtlbl.set_position(xy)
+            self.txtlbl.set_text(f'Speed:{speed:.2f} \nCourse:{course:.0f}')
+
 class SurveyPlotter(Plotter):
     
     def __init__(self,
@@ -333,9 +412,10 @@ class SurveyPlotter(Plotter):
                  n_looks):
         
         self.setup(map_lims,
-                   grid_size,
-                   map_img)
-        self.setup_agent(xy0)
+                   grid_size)
+        self.setup_map(map_img)
+        self.agent = self.AgentPlot(self.ax,
+                                    xy0)
         self.setup_contacts()
         self.setup_covmap(scan_lims, 
                           min_scan_ang,
@@ -352,10 +432,15 @@ class SEASPlotter(Plotter):
                  map_lims,
                  grid_size,
                  xy_start,
-                 time_lim):
+                 xy_start_vessels):
         self.setup(map_lims,
-                    grid_size,
-                    [])
-        self.setup_agent(xy_start)
-        self.updatetime(time_lim, time_lim)
+                    grid_size)
+        self.agent = self.AgentPlot(self.ax,
+                                    xy_start)
+        self.vessels = []
+        for xy in xy_start_vessels:
+            self.vessels.append(self.AgentPlot(self.ax,
+                                               xy,
+                                               col='green'))
+        self.updateps(1)
         self.ax.figure.canvas.draw()

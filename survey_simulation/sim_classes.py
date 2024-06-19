@@ -23,13 +23,14 @@ class Agent:
         self.destination = xy_start
         self.distance_dest = np.inf
         self.distance_travelled = 0
+        self.compute_movement_step()
 
     def move_to_position(self,
                          xy):
         # Move immediately to a position
         self.xy = xy
         self.xy_hist = np.append(self.xy_hist,
-                                 [[xy[0],xy[1]]],
+                                 [xy],
                                  axis=0)
 
     def advance_one_step(self, 
@@ -39,16 +40,19 @@ class Agent:
 
         # if the agent has reached the destination, stop
         if self.distance_travelled>=self.distance_dest:
-            self.adjust_speed(0)
+            self.set_speed(0)
             self.xy = self.destination
             
         self.xy = [self.xy[0]+self.xy_step[0]*t_elapsed,
                     self.xy[1]+self.xy_step[1]*t_elapsed]
-
+        self.xy_hist = np.append(self.xy_hist,
+                                 [self.xy],
+                                 axis=0)
+    
     def destination_req(self, 
                         xy):
         # set speed
-        self.adjust_speed(self.speed0)
+        self.set_speed(self.speed0)
         # start of leg
         xy0 = self.xy_hist[-1]
         # end of leg
@@ -68,7 +72,7 @@ class Agent:
         self.xy_step = [self.speed*np.sin(course_rad), 
                         self.speed*np.cos(course_rad)]
     
-    def adjust_speed(self, speed):
+    def set_speed(self, speed):
         # set the new speed and compute the new step
         self.speed = speed
         self.compute_movement_step()
@@ -78,7 +82,7 @@ class Agent:
         self.course = course
         self.compute_movement_step()
 
-    def set_speedandcourse(self,speed, course):
+    def set_speedandcourse(self, speed, course):
         # set both speed and course
         self.speed = speed
         self.course = course
