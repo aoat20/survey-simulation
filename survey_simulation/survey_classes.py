@@ -29,6 +29,7 @@ class CoverageMap:
         #            cov_corners_l,
         #            cov_corners_r,
         #            orientation)
+
         cov_temp = self.pixelrect(x1 - self.sa[0],
                                     x2 - self.sa[0],
                                     y1 - self.sa[2],
@@ -69,7 +70,7 @@ class CoverageMap:
         dx_sa = self.sa[1]-self.sa[0]
 
         # Check that the length of scan is above the minimum scan length
-        if rec_l > self.min_scan_l:
+        if rec_l > self.min_scan_l and self.scan_width >0:
             # account for the leadinleadout length
             x1 += np.cos(rec_rot)*self.leadinleadout
             y1 += np.sin(rec_rot)*self.leadinleadout
