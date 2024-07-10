@@ -157,7 +157,7 @@ class Plotter:
         # ground truth
         self.targ_plt, = self.ax.plot([], [],
                                         'X',
-                                        markersize=8,
+                                        markersize=20,
                                         markerfacecolor='White',
                                         markeredgecolor='black',
                                         zorder=5)
