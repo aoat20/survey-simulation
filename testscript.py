@@ -1,47 +1,81 @@
-import survey_simulation
+from survey_simulation import SurveySimulation
+from survey_simulation import SurveySimulationGrid
+from survey_simulation import SEASSimulation
 import numpy as np
 import cv2
+import time
 import matplotlib.pyplot as plt
 from PIL import Image
+from multiprocessing import Process,Queue,Pipe
 
-'''
-img = np.asarray(Image.open('maps/Map2.png'))
-print(img.shape)
-img_tmp = img[:,:,0]
-img_sz = img_tmp.shape
-print(img_sz)
-img_nan = np.empty(img_sz)
-img_nan[:] = np.nan
-img_mask = np.where(img_tmp==0, img_tmp, img_nan)
-print(img_mask)
+# ss = SEASSimulation()
 
-fig,ax = plt.subplots()
-imgplot = ax.imshow(img)
-ax.plot((0, 100, 200), (20, 300, 60))
-ax.imshow(img_mask)
-plt.show()
-fig.canvas.draw()
-'''
+# ss = Process(target=SEASSimulation)
+# ss.start()
 
-ss = survey_simulation.SurveySimulation('manual',
-                                      save_loc='data')
+# print('continue')
 
-#ss = survey_simulation.SurveySimulation('playback', 
-#                                       save_loc='data/Episode0')
+# time.sleep(4)
+# print(ss.state)
 
-# ss = survey_simulation.SurveySimulation('test',
-#                                       save_loc='data')
-# for n in range(100):
-#     rnd_mv = np.random.randint(0,100,size=(2)).tolist()
+# print('continued')
+
+# time.sleep(3.1)
+# ss.set_speed_course(speed=5, course=0)
+
+# ss = SurveySimulationGrid('manual',
+#                           save_dir='data')
+
+# ss = SurveySimulation('manual',
+#                       save_dir='data',
+#                       agent_start=[120,100])
+
+ss = SurveySimulation('playback', 
+                        save_dir='data/',
+                        ep_n=9)
+
+if 1:
+    start = time.time() 
+ 
+    ss = SurveySimulationGrid('test',
+                        save_dir='data')
+    for n in range(100):
+        rnd_mv = np.random.randint(-70,70)
+        ss.agent.set_speedandcourse(ss.agent.speed0,
+                                    rnd_mv)
+        obs = ss.next_step()
+        if ss.end_episode:
+            end = time.time() 
+            print("Execution time: ",end - start) 
+            ss.save_episode()
+            ss.reset()
+            start = time.time() 
+
 #     t, cov_map, contacts, mp_msk = ss.new_action('move', rnd_mv)
-    
-#     plt.imshow(mp_msk)
-     
-#     #At two arbitrary steps, demo group and ungroup actions
-#     if n==45: 
-#         ss.new_action('group', [0,1,2])
-#     if n==65:
-#         ss.new_action('ungroup', [0])
-#         ss.new_action('group', [1,3,4])
 
-# plt.show()
+    # print(contacts)
+
+    # #At two arbitrary steps, demo group and ungroup actions
+    # if n==45: 
+    #     ss.new_action('group', [0,1])
+    # if n==65:
+    #     ss.new_action('ungroup', [0])
+    #     ss.new_action('group', [1,2])
+
+# ss.save_episode(2)
+
+# comms1, comms2 = Pipe()
+
+# kw = {'mode':'test', 
+#       'save_dir': 'data', 
+#       'agent_start': [120,100],
+#       'child_conn': comms2}
+
+# p = Process(target=SurveySimulation, kwargs=kw)
+# time.sleep(1)
+# p.start()
+# while 1:
+#     time.sleep(1)
+#     print(comms1.recv())
+#     time.sleep(1) 
+#     comms1.send(['Omg heeeey'])

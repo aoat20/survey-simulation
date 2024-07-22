@@ -14,7 +14,7 @@ class SEASSimulation():
 
     def __init__(self):
         # Load parameters 
-        mode = 'test'
+        mode = 'manual'
         self.playspeed = 1
 
         # Load the desired scene 

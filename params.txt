@@ -1,35 +1,38 @@
 # Interface settings
 rt: 0
 play_speed: 1
+t_step: 1
+grid_spacing: 1
+plotter: 1
 
 # Agent properties
-#agent_start: (55., 190.) 
+#agent_start: (100., 60.) 
 scan_width: 20.
 leadinleadout: 5.
 min_scan_l: 10.
 nadir_width: 3.
 agent_speed: 5.
+scan_thr: 2
 
 # Map properties
-map_n: 1
+map_n: 2
 #map_path: "maps/Map1.png"
 scan_area_lims: (0, 200, 0, 120)
 map_area_lims: (0, 200, 0, 120) 
-grid_res: 10
 
 # Target and clutter stats
 n_targets: 3 
 det_probs: (0.4, 0.9) 
 loc_uncertainty: 3.
 n_clutter: 100
-clutter_dens: 0.02
+clutter_dens: 0.005
 det_probs_clutter: (0.01, 0.05) 
 clutter_or_mean: 45
 clutter_or_std: 0
 
 # Mission parameters
-time_lim: 500.
+time_lim: 800.
 min_scan_angle_diff: 30 
-N_looks: 6 
+N_looks: 3 
 N_angles: 6
-rand_seed: 50
+#rand_seed: 50
