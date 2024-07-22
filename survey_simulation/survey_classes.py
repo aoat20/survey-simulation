@@ -17,23 +17,27 @@ class CoverageMap:
         self.map_stack = []
         # unpack relevant parameters
         self.sa = scan_lims
-        self.sa = [int(x) for x in self.sa]
+        self.scan_area = [int(x) for x in self.sa]
         self.leadinleadout = leadinleadout
         self.min_scan_l = min_scan_l
         self.scan_width = scan_width
         self.nadir_width = nadir_width
 
-    def add_scan(self, x1, y1, x2, y2):
+    def add_scan(self, xy1, xy2):
         # cov_temp: (cov_l,
         #            cov_r,
         #            cov_corners_l,
         #            cov_corners_r,
         #            orientation)
+        x1 = xy1[0]
+        y1 = xy1[1]
+        x2 = xy2[0]
+        y2 = xy2[1]
 
-        cov_temp = self.pixelrect(x1 - self.sa[0],
-                                    x2 - self.sa[0],
-                                    y1 - self.sa[2],
-                                    y2 - self.sa[2])
+        cov_temp = self.pixelrect(x1 - self.scan_area[0],
+                                    x2 - self.scan_area[0],
+                                    y1 - self.scan_area[2],
+                                    y2 - self.scan_area[2])
 
         # Compute scan angle
         ang_L_deg = np.rad2deg(cov_temp[4]+np.pi/2)
@@ -66,8 +70,8 @@ class CoverageMap:
         rec_rot = np.arctan2(y2 - y1,
                                 x2 - x1)
 
-        dy_sa = self.sa[3]-self.sa[2]
-        dx_sa = self.sa[1]-self.sa[0]
+        dy_sa = self.scan_area[3]-self.scan_area[2]
+        dx_sa = self.scan_area[1]-self.scan_area[0]
 
         # Check that the length of scan is above the minimum scan length
         if rec_l > self.min_scan_l and self.scan_width >0:
@@ -322,7 +326,6 @@ class Detection:
     angle: float
     scan_n: int
     group_n: int
-
 
 @dataclass
 class DetGroup:

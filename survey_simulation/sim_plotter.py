@@ -19,8 +19,7 @@ class Plotter:
         plt.pause(0.0001)
 
     def setup_plot(self, 
-              map_lims,
-              grid_size):
+              map_lims):
         # set up empty plot
         self.fig, self.ax = plt.subplots()
         self.ax.set_xlim(xmin=map_lims[0],
@@ -30,12 +29,7 @@ class Plotter:
         self.ax.grid(color='lightgray',
                         linestyle='-',
                         linewidth=0.2)
-        self.ax.set_axisbelow(True)
-        #self.ax.set_xticks(np.arange(map_lims[0],
-        #                             map_lims[1], grid_size))
-        #self.ax.set_yticks(np.arange(map_lims[2],
-        #                             map_lims[3], grid_size))
-        
+        self.ax.set_axisbelow(True)        
         self.ax.set_xlabel('Easting, m')
         self.ax.set_ylabel('Northing, m')
 
@@ -43,21 +37,6 @@ class Plotter:
         # get the map image and show
         if map_img.any():
             self.ax.imshow(map_img)
-
-    def updatetrackhist(self, xy_hist):
-        self.track_hist_plt.set_data(xy_hist[:,0],
-                                        xy_hist[:,1])
-
-    def updatetarget(self, xy, xy0):            
-        x, y = xy[0], xy[1]
-        self.target_pos.set_data([x], [y])
-        self.track_int_plt.set_data((xy0[0],xy[0]), (xy0[1],xy[1]))
-
-    def updatecourse(self, xy0, course):
-        course_rad = np.deg2rad(90-course)
-        xy1 = (xy0[0]+100000*np.cos(course_rad),
-               xy0[1]+100000*np.sin(course_rad))
-        self.track_int_plt.set_data((xy0[0],xy1[0]), (xy0[1],xy1[1]))
 
     def updateaislocs(self, pos):
         l_p = len(pos)
@@ -180,7 +159,7 @@ class Plotter:
             self.detectionslineplt.pop()
             
         for n in range(l_d - l_p):
-            self.detectionslineplt.append(plt.scatter(detections[l_p+n].x,
+            self.detectionslineplt.append(self.ax.scatter(detections[l_p+n].x,
                                                         detections[l_p+n].y,
                                                         color='white',
                                                         edgecolor='white',
@@ -355,7 +334,6 @@ class SurveyPlotter(Plotter):
     def __init__(self,
                  map_lims,
                  scan_lims,
-                 grid_size,
                  map_img,
                  xy0,
                  time_lim, 
@@ -368,7 +346,6 @@ class SurveyPlotter(Plotter):
         
         self.ml = map_lims
         self.sl = scan_lims
-        self.gs = grid_size
         self.mi = map_img
         self.xy0 = xy0 
         self.tl = time_lim
@@ -384,8 +361,7 @@ class SurveyPlotter(Plotter):
     def setup(self):
     
         # setup things
-        self.setup_plot(self.ml,
-                        self.gs)
+        self.setup_plot(self.ml)
         self.setup_map(self.mi)
         self.agent = self.AgentPlot(ax = self.ax,
                                     xy0 = self.xy0)
@@ -398,7 +374,7 @@ class SurveyPlotter(Plotter):
                             self.ms,
                             self.sw)
         self.updatetime(self.tl, self.tl)
-        self.ax.figure.canvas.draw()
+        self.draw()
     
     def reset(self):
         self.agent.updateagent(self.xy0)

@@ -5,16 +5,15 @@ import shutil
 from survey_simulation.survey_classes import Detection
 from PIL import Image
 
-
 class Agent:
 
     def __init__(self, 
                  xy_start=[0,0],
-                 course=0, 
-                 speed=0):
+                 course=None, 
+                 speed=0,
+                 scan_thr = 0):
         # 
         self.speed0 = speed
-        self.speed = speed
         self.course0 = course
         self.course = course
         self.xy = xy_start
@@ -23,7 +22,16 @@ class Agent:
         self.destination = xy_start
         self.distance_dest = np.inf
         self.distance_travelled = 0
-        self.compute_movement_step()
+        # If the course is not set, don't move
+        if course is None:
+            self.speed = 0
+        else:
+            self.speed = speed
+            self.compute_movement_step()
+
+        # scan straightness threshold and index
+        self.ind0 = 0
+        self.scan_thr = scan_thr
 
     def move_to_position(self,
                          xy):
@@ -35,24 +43,22 @@ class Agent:
 
     def advance_one_step(self, 
                          t_elapsed):
-
+        
         self.distance_travelled += self.speed*t_elapsed
-
         # if the agent has reached the destination, stop
         if self.distance_travelled>=self.distance_dest:
             self.set_speed(0)
             self.xy = self.destination
-            
+                    
         self.xy = [self.xy[0]+self.xy_step[0]*t_elapsed,
-                    self.xy[1]+self.xy_step[1]*t_elapsed]
+                   self.xy[1]+self.xy_step[1]*t_elapsed]
+
         self.xy_hist = np.append(self.xy_hist,
-                                 [self.xy],
+                                 [np.array(self.xy)],
                                  axis=0)
     
     def destination_req(self, 
                         xy):
-        # set speed
-        self.set_speed(self.speed0)
         # start of leg
         xy0 = self.xy_hist[-1]
         # end of leg
@@ -63,7 +69,7 @@ class Agent:
         # compute course and set
         course = np.rad2deg(np.arctan2(xy[0]-xy0[0], 
                                        xy[1]-xy0[1]))
-        self.set_course(course)
+        self.set_speedandcourse(self.speed0, course)
         self.distance_travelled = 0
         
     def compute_movement_step(self):
@@ -88,15 +94,40 @@ class Agent:
         self.course = course
         self.compute_movement_step()
 
+    def check_path_straightness(self):
+        # 
+        points = self.xy_hist[self.ind0:]
+        p1 = points[0]
+        p2 = points[-1]
+        d = []
+        if len(points)>2:
+            for xy in points[1:-1]:
+                d.append(np.abs(np.cross(p2-p1, 
+                                         p1-xy))/np.linalg.norm(p2-p1))
+
+            if max(d)>self.scan_thr:
+                ind0_out = self.ind0
+                self.ind0 = len(self.xy_hist)-2
+                return ind0_out
+            else:
+                return None
+        else:
+            return None
+
     def reset(self):
-        self.speed = self.speed0
         self.course = self.course0
+        if self.course0 is None:
+            self.speed = 0
+        else:
+            self.speed = self.speed0
+            self.compute_movement_step()
         self.xy = self.xy_hist[0].tolist()
         self.xy_hist = [self.xy_hist[0]]
         self.xy_leg0 = self.xy_hist[0].tolist()
         self.destination = [0,0]
-        self.distance_dest = 0
+        self.distance_dest = np.inf
         self.distance_travelled = 0
+        self.ind0 = 0
 
 class Playback:
     """ Playback of survey data
@@ -195,12 +226,15 @@ class Playback:
         return cov_map, inds
 
 class Timer:
-    def __init__(self, time_lim):
+    def __init__(self, 
+                 time_lim = 800, 
+                 t_step = 1):
         # initialise vars
         self.time_lim = time_lim
         self.time_remaining = time_lim
         self.time_elapsed = 0
         self.time_temp = time_lim
+        self.t_step = t_step
 
     def update_temp(self, xy1, xy2, xy0, agent_spd):
         # update the temporary time
@@ -251,15 +285,15 @@ class Logger:
         self.truth = []
         self.cov = []
         # add initial conditions
-        self.addmove(agent_start[0],
-                        agent_start[1])
+        self.addmove(agent_start)
         self.addcovmap(np.ones((scan_lims[3]-scan_lims[2],
-                                        scan_lims[1]-scan_lims[0]))*np.nan)
+                                scan_lims[1]-scan_lims[0]))*np.nan)
         self.addtruth(gnd_trth)
         self.addobservation([], time_lim)
         self.addmeta(params)
 
-    def addmove(self, x, y):
+    def addmove(self, xy):
+        x, y = xy[0], xy[1]
         self.actions.append(" ".join([str(self.action_id),
                                         "move",
                                         "{:.1f}".format(x),
@@ -398,14 +432,14 @@ class Logger:
         self.truth = []
         self.cov = []
         # add initial conditions
-        self.addmove(agent_start[0],
-                     agent_start[1])
+        self.addmove(agent_start)
         self.addcovmap(np.ones((scan_lims[3]-scan_lims[2],
                                 scan_lims[1]-scan_lims[0]))*np.nan)
         self.addtruth(new_contactstrth)
         self.addobservation([], time_lim)
 
 class Map:
+    
     """ summary
     """
     def __init__(self, 
@@ -416,7 +450,8 @@ class Map:
 
         self.scan_lims = scan_lims
         self.map_lims = map_lims
-        self.occ = np.zeros((self.map_lims[3],self.map_lims[1]))
+        self.occ = np.zeros((self.map_lims[3],
+                             self.map_lims[1]))
 
         # if map_n or map path exists, load map and parameters
         if map_n:
@@ -424,6 +459,8 @@ class Map:
             map_path = 'maps/Map'+str(map_n)+'.png'
         if map_path:
             self.setup(map_path)
+        else:
+            self.img = [0, 0]
 
     def setup(self, map_path):
         img = np.asarray(Image.open(map_path))
@@ -437,19 +474,25 @@ class Map:
         self.img = img
 
     def is_occupied(self, xy):
+        ml = self.map_lims
         # check whether the coordinate is in an occupied 
-        if xy[0]<self.map_lims[0] or xy[0]>self.map_lims[1] or xy[1]<self.map_lims[2] or xy[1]>self.map_lims[3]:
+        if xy[0]<ml[0] or xy[0]>ml[1] or xy[1]<ml[2] or xy[1]>ml[3]:
+            return 1
             raise Exception("agent position is not within the bounds of the map")
-        if self.occ[round(xy[0]),round(xy[1])]:
+        elif self.occ[round(xy[1]),round(xy[0])]:
+            return 1
             raise Exception("agent position is an occupied coordinate of the map")
 
     def default_start(self):
         # default positions for the agent based on the map
         def_starts = ((58., 192.),
-                      (31., 55.),
+                      (33., 56.),
                       (200., 175.))
-        return def_starts[self.map_n-1]
-    
+        try:
+            return def_starts[self.map_n-1]
+        except:
+            raise Exception("You need to specify an agent_start position")
+ 
     def check_path(self, 
                    x1i, 
                    y1i, 
@@ -486,3 +529,4 @@ class Map:
             if self.occ[yout,xout]: 
                 return 0 
         return 1
+    
