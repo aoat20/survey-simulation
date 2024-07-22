@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name='survey-simulation',
-    version='0.20',
+    version='0.30',
     author='Alfie Anthony Treloar',
     author_email='aoat20@bath.ac.uk',
     description='Simple survey simulation',
