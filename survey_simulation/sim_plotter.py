@@ -394,11 +394,9 @@ class SEASPlotter(Plotter):
 
     def __init__(self, 
                  map_lims,
-                 grid_size,
                  xy_start,
                  xy_start_vessels):
-        self.setup_plot(map_lims,
-                    grid_size)
+        self.setup_plot(map_lims)
         self.agent = self.AgentPlot(ax = self.ax,
                                     xy0 = xy_start, 
                                     speed = 0, 

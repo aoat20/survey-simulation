@@ -18,91 +18,73 @@ class SEASSimulation():
         self.playspeed = 1
 
         # Load the desired scene 
-        agent, vessels, xy_lim = self.load_boats("SEASscenario1.json")
+        params, self.agent, self.vessels, xy_lim = self.load_scene("SEASscenario1.json")
 
         # Get all the other vessels start points
-        vessels_xy = [v.xy for v in vessels]
+        vessels_xy = [v.xy for v in self.vessels]
 
-        if mode == 'manual':
-            plotter = SEASPlotter(map_lims=([sum(x) for x in zip(xy_lim, [-10000, 10000, -10000, 10000])]),
-                                    grid_size=(xy_lim[2]-xy_lim[0])/4,
-                                    xy_start=agent.xy,
+        if mode == 'manual' or mode == 'test':
+            plotter = SEASPlotter(map_lims=([sum(x) for x in zip(xy_lim, 
+                                                                 [-10000, 
+                                                                  10000, 
+                                                                  -10000, 
+                                                                  10000])]),
+                                    xy_start=self.agent.xy,
                                     xy_start_vessels = vessels_xy)
 
-        # Set up comms queues and keywords
-        q_toplotter = Queue(maxsize=1)
-        q_tomain = Queue(maxsize=1)
-        kw = {'q_toplotter': q_toplotter,
-              'q_tomain': q_tomain,
-              'agent': agent,
-              'vessels': vessels}
+        self.plotting_loop(plotter)
+
+    def plotting_loop(self,
+                       plotter):
+        # Controls callback
+        plotter.ax.figure.canvas.mpl_connect('key_press_event',
+                                                self.on_key)
+        plotter.ax.figure.canvas.mpl_connect('key_release_event', 
+                                                self.on_release)
+        plotter.show(blocking=False)
+
+        self.play = True
+        self.turnleft = False
+        self.turnright = False
+        self.slowdown = False
+        self.speedup = False
+        self.ps_change = False
+
+        while True: 
+            if self.play:
+                self.next_step()
+                self.update_plot(plotter)
+                # Control handlers
+                if self.turnleft:
+                    self.agent.set_course(self.agent.course - 5)
+                elif self.turnright:
+                    self.agent.set_course(self.agent.course + 5)
+                elif self.slowdown:
+                    self.agent.set_speed(self.agent.speed*0.95)   
+                elif self.speedup:
+                    self.agent.set_speed(self.agent.speed*1.05)
+                elif self.ps_change:
+                    self.ps_change = False
+                    plotter.updateps(self.playspeed)
+            time.sleep(0.04)
+            plotter.draw()
+
+    def next_step(self):
+        self.agent.advance_one_step(0.04*self.playspeed)
+
+        for v in self.vessels:
+            v.advance_one_step(0.04*self.playspeed)
+
+    def update_plot(self, 
+                    plotter):
         
-        # set up process and run
-        p = Process(target=self.run_mainloop, 
-                    kwargs=kw,
-                    daemon=True)
-        p.start()
-        
-        if mode == 'manual':
-            self.plotting_loop(plotter,
-                               q_toplotter,
-                               q_tomain)
-        elif mode == 'test':
-            
-            self.test_loop(q_toplotter,
-                          q_tomain)
-
-    def plotting_loop(self, 
-                      plotter,
-                      q_toplotter,
-                      q_tomain):
-            # Controls callback
-            plotter.ax.figure.canvas.mpl_connect('key_press_event',
-                                                    self.on_key)
-            plotter.ax.figure.canvas.mpl_connect('key_release_event', 
-                                                 self.on_release)
-            plotter.show(blocking=False)
-            
-            self.play = True
-            self.turnleft = False
-            self.turnright = False
-            self.slowdown = False
-            self.speedup = False
-            self.ps_change = False
-
-            while 1:
-                if self.play:
-                    tic = time.time()
-
-                    if q_toplotter.full():
-                        state = q_toplotter.get()
-                        self.update_agentplots(plotter.agent,
-                                               state['agent'])
-                        n = 0
-                        for v in state['vessels']:
-                            self.update_agentplots(plotter.vessels[n],
-                                                   v)
-                            n += 1
-                    
-                    # Control handlers
-                    if self.turnleft:
-                        q_tomain.put({'course': state['agent'].course-5})   
-                    elif self.turnright:
-                        q_tomain.put({'course': state['agent'].course+5})   
-                    elif self.slowdown:
-                        q_tomain.put({'speed': state['agent'].speed*0.95})    
-                    elif self.speedup:
-                        q_tomain.put({'speed': state['agent'].speed*1.05})    
-                    elif self.ps_change:
-                        q_tomain.put({'playspeed':self.playspeed})
-                        self.ps_change = False
-                        plotter.updateps(self.playspeed)
-
-                    # Sleep to maintain 25fps
-                    time.sleep(np.clip(0.01-(time.time()-tic),0,0.01))
-                else:
-                    time.sleep(0.04)
-                plotter.draw()
+        self.update_agentplots(plotter.agent,
+                               self.agent)
+        n = 0
+        for v in self.vessels:
+            self.update_agentplots(plotter.vessels[n],
+                                    v)
+            n += 1
 
     def update_agentplots(self, plot_obj, agent):
         plot_obj.updateagent(agent.xy)
@@ -114,55 +96,7 @@ class SEASSimulation():
         if len(agent.xy_hist)>1:
             plot_obj.updatetrackhist(agent.xy_hist)
 
-    def test_loop(self,
-                  q_toplotter,
-                  q_tomain):
-        while True:
-            if q_toplotter.full():
-                self.state = q_toplotter.get()
-
-            
-            # time.sleep(0.01)
-
-    def run_mainloop(self, 
-                     q_toplotter,
-                     q_tomain,
-                     agent, 
-                     vessels):
-        
-        playspeed = 1
-        while 1:
-            tic = time.time()
-
-            # receive any updated command
-            if q_tomain.full():
-                command = q_tomain.get()
-                if 'move' in command.keys():
-                    mv = command['move']
-                    agent.move_to_position(mv)
-                elif 'speed' in command.keys() and 'course' in command.keys():
-                    agent.set_speedandcourse(command['speed'],
-                                             command['course'])
-                elif 'speed' in command.keys():
-                    agent.set_speed(command['speed'])
-                elif 'course' in command.keys():
-                    agent.set_course(command['course'] % 360)
-                elif 'playspeed' in command.keys():
-                    playspeed = command['playspeed']
-
-            agent.advance_one_step(0.04*playspeed)
-
-            for v in vessels:
-                v.advance_one_step(0.04*playspeed)
-
-            # output sim state
-            state = {"agent": agent,
-                     "vessels": vessels}
-            q_toplotter.put(state)
-
-            time.sleep(np.clip(0.04-(time.time()-tic),0,0.04))
-
-    def load_boats(self,
+    def load_scene(self,
                    config_file):
         # load the boat locations and speeds from the conf file
 
@@ -172,6 +106,9 @@ class SEASSimulation():
         # Open and load the config file
         f = open(config_file)
         conf = json.load(f)
+
+        params = conf['params']
+
 
         # initialise the other vessels 
         vessels = []
@@ -205,7 +142,7 @@ class SEASSimulation():
                   xy_lim_utm[0].max(),
                   xy_lim_utm[1].min(),
                   xy_lim_utm[1].max()]
-        return agent, vessels, xy_lim
+        return params, agent, vessels, xy_lim
 
     def set_speedandcourse(self,
                            q_tomain,

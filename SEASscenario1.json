@@ -1,5 +1,11 @@
 {
-    "vessel_details": [
+    "params": 
+    {
+        "test": 10,
+        "test2": 11
+    },
+    "vessel_details": 
+    [
         {
             "vessel": "CandidateMass",
             "speed": 10,
