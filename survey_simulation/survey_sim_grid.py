@@ -4,7 +4,6 @@ import time
 from survey_simulation.sim_plotter import SurveyPlotter
 from survey_simulation.survey_classes import ContactDetections, CoverageMap
 from survey_simulation.sim_classes import Timer, Playback, Logger, Map, Agent
-
 import matplotlib.pyplot as plt
 
 class SurveySimulationGrid():
@@ -81,7 +80,6 @@ class SurveySimulationGrid():
         self.map_obj.is_occupied(agent_start)
 
         # Get t step and grid spacing
-
         self.agent = Agent(xy_start=agent_start,
                            speed=params['agent_speed'],
                            scan_thr = params['scan_thr'])
@@ -209,7 +207,6 @@ class SurveySimulationGrid():
         if self.covmap.map_stack:
             cov_map_grid = np.count_nonzero(~np.isnan(self.covmap.map_stack),
                                             axis=0)
-            
         else: 
             cov_map_grid = np.zeros((self.map_obj.map_lims[3],
                                      self.map_obj.map_lims[1]))
@@ -267,6 +264,11 @@ class SurveySimulationGrid():
             self.add_group(action)
         elif action_type == 'ungroup':
             self.remove_group(action)
+
+    def new_move(self, 
+                 course):
+        self.agent.set_speedandcourse(self.agent.speed0,
+                                      course)
 
     def updateplots(self):
         # plotting
@@ -510,4 +512,6 @@ class SurveySimulationGrid():
             self.plotter.fig.canvas.draw_idle()
 
 if __name__ == '__main__':
-    ss = SurveySimulationGrid()
+    ss = SurveySimulationGrid('manual',
+                              'params.txt',
+                              'data')
