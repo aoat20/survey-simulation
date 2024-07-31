@@ -1,7 +1,32 @@
-import cv2
 import numpy as np
 import math
 from dataclasses import dataclass
+
+def is_point_in_polygon(point, polygon_corners):
+    """ 
+    Determines whether a point is in a polygon
+    
+    Args:
+        point: A tuple (x, y) 
+        polygon_corners: A list of tuples representing the polygon vertices
+
+    Returns: 
+        True if point is inside the polygon, False otherwise.
+    """
+    x, y = point
+    n = len(polygon_corners)
+    inside = False
+    for i in range(n):
+        x1, y1 = polygon_corners[i]
+        x2, y2 = polygon_corners[(i + 1) % n]
+        if y > min(y1, y2):
+            if y <= max(y1, y2):
+                if x <= max(x1, x2):
+                    if y1 != y2:
+                        x_inters = (y - y1)*(x2 - x1)/(y2 - y1) + x1
+                        if x1 == x2 or x < x_inters:
+                            inside = not inside
+    return inside 
 
 class CoverageMap:
     """_summary_
@@ -95,15 +120,14 @@ class CoverageMap:
                                         [x1-dx_nad, y1-dy_nad],
                                         [x2-dx_nad, y2-dy_nad],
                                         [x2-dx, y2-dy]], np.int32)
+            
             # get the mask (flipped because image)
-            rect_temp = np.flip(cv2.fillConvexPoly(np.zeros((dy_sa,
-                                                                dx_sa)),
-                                                    rect_corners_1,
-                                                    1), 0)
-            rect_temp2 = np.flip(cv2.fillConvexPoly(np.zeros((dy_sa,
-                                                                dx_sa)),
-                                                    rect_corners_2,
-                                                    1), 0)
+            rect_temp = np.flip(self.rect_to_mask(rect_corners_1,
+                                          [dx_sa, dy_sa]), 0)
+            
+            rect_temp2 = np.flip(self.rect_to_mask(rect_corners_2,
+                                          [dx_sa, dy_sa]), 0)
+
         else:
             # if too short, fill with empty data
             rect_temp = np.flip(np.ones((dy_sa,
@@ -119,6 +143,37 @@ class CoverageMap:
                                         [0, 0],
                                         [0, 0]], np.int32)
         return rect_temp, rect_temp2, rect_corners_1, rect_corners_2, rec_rot
+
+    def rect_to_mask(self, 
+                     rectangle_corners,
+                     map_xy) -> np.array:
+        width, height = map_xy
+        mask = np.zeros((height, width))
+        mask2 = np.zeros((height, width))
+
+        min_x = min(rectangle_corners[0][0], 
+                    rectangle_corners[1][0],
+                    rectangle_corners[2][0],
+                    rectangle_corners[3][0])
+        max_x = max(rectangle_corners[0][0], 
+                    rectangle_corners[1][0],
+                    rectangle_corners[2][0],
+                    rectangle_corners[3][0])
+        min_y = min(rectangle_corners[0][1], 
+                    rectangle_corners[1][1],
+                    rectangle_corners[2][1],
+                    rectangle_corners[3][1])
+        max_y = max(rectangle_corners[0][1], 
+                    rectangle_corners[1][1],
+                    rectangle_corners[2][1],
+                    rectangle_corners[3][1])
+        
+        for y in range(max(min_y,0), min(max_y+1, height)):
+            for x in range(max(min_x,0), min(max_x+1, width)):
+                if is_point_in_polygon((x, y), rectangle_corners):
+                    mask[y, x] = 1
+
+        return mask
 
     def reset(self):
         self.map_stack = []
@@ -242,29 +297,14 @@ class ContactDetections:
         x_out = []
         y_out = []
 
-        # compute edge vectors
-        AB = rect_corners[1] - rect_corners[0]
-        BC = rect_corners[2] - rect_corners[1]
-        CD = rect_corners[3] - rect_corners[2]
-        DA = rect_corners[0] - rect_corners[3]
-
         for xy in list(contacts):
             # add some uncertainty to the location of the contact
             xy_temp = xy.location + np.random.normal(0,
-                                                        self.loc_uncertainty,
-                                                        size=(1, 2))[0]
-            # make vectors from corners to point
-            AP = xy_temp - rect_corners[0]
-            BP = xy_temp - rect_corners[1]
-            CP = xy_temp - rect_corners[2]
-            DP = xy_temp - rect_corners[3]
-            # compute the sign of the cross product for each corner
-            ABCD_s = [np.sign(np.cross(AB, AP)),
-                        np.sign(np.cross(BC, BP)),
-                        np.sign(np.cross(CD, CP)),
-                        np.sign(np.cross(DA, DP))]
+                                                    self.loc_uncertainty,
+                                                    size=(1, 2))[0]
+
             # if all signs the same, point is in rectangle
-            if len(set(ABCD_s)) == 1 and rect_corners.any():
+            if is_point_in_polygon(xy_temp, rect_corners) and rect_corners.any():
                 # check whether it's target or clutter
                 #if xy.obj_class == 'Target':
                 rng_tmp = xy.det_probs[1] - xy.det_probs[0]
