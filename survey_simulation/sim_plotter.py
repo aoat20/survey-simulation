@@ -1,8 +1,8 @@
 import matplotlib.pylab as plt
 import matplotlib.patches as patches
+from matplotlib.colors import hsv_to_rgb
 import numpy as np
 import math
-import cv2
 
 class Plotter:
     """_summary_
@@ -103,8 +103,11 @@ class Plotter:
                                             m_x))
         map_hsv[:, :, 2] = np.clip(map_cnt/self.n_looks, 0, 1)
         # plot new coverage map
-        self.cov_plt.set_data(cv2.cvtColor(np.float32(map_hsv),
-                                            cv2.COLOR_HSV2BGR))
+
+        # convert hsv to rgb
+        map_rgb = hsv_to_rgb(map_hsv)
+                
+        self.cov_plt.set_data(map_rgb)
 
     def setup_contacts(self):
         # contacts
