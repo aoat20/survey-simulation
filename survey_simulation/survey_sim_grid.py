@@ -251,11 +251,12 @@ class SurveySimulationGrid():
         # do action
         if action_type == 'move':
             # check move is valid
-            if not all([isinstance(a, int) for a in action]) and len(action) != 1:
-                raise ValueError("Invalid move action. Should be a float representing the course.")
-            else:
+            if isinstance(action,int) or isinstance(action,float):
                 self.agent.set_speedandcourse(self.agent.speed0,
                                               action)
+            else:
+                raise ValueError("Invalid move action. Should be " 
+                                 "a float/int representing the course.")
         elif action_type == 'group':
             self.add_group(action)
         elif action_type == 'ungroup':
