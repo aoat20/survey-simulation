@@ -18,19 +18,19 @@ pip install git+https://github.com/aoat20/survey-simulation
 ## Usage
 Import the package and initialise a sim object with mode, param filepath and save directory:
 ```python 
-import survey_simulation
-ss = survey_simulation.SurveySimulation(mode,
-                                       params_filepath,
-                                       save_dir)
+from survey_simulation import SurveySimulationGrid
+ss = SurveySimulationGrid(mode,
+                          params_filepath,
+                          save_dir)
 
 ```
 
-`mode` can be "manual", "test" or "playback". `params_filepath` is the location of the parameter file location. `save_dir` is the directory in which to save log files. Log files will be saved to individual folders in that folder with incrementing episode numbers.
+`mode` can be "manual", "test" or "playback". `params_filepath` is the location of the parameter file location. `save_dir` is the directory in which to save log files. Log files will be saved to individual folders in that folder with incrementing episode numbers or with whatever episode number that has been specified.
 
 ### Manual 
 Manual mode is for user operation to generate training data.
 
-Click to go to next coordinate OR manually type next coordinate, followed by enter.
+Click on the map to go to next coordinate.
 
 - "z" key to switch between snap mode and free mode.
 - "shift" key to switch between move mode and group mode. In group mode, click on desired contacts, then press "a" key to group. To ungroup, while in group mode, click on the group.
@@ -40,72 +40,59 @@ Click to go to next coordinate OR manually type next coordinate, followed by ent
 Test mode is for interacting with the simulator in Python. After instantiating a simulator object, use new_action function to "move", "group" and "ungroup".
 
 ```python 
-ss.new_action('move',[x, y])
+ss.new_action('move', course)
 ss.new_action('group', [c0, c1, c2])
 ss.new_action('ungroup',[g0])
 ```
 "move" action outputs four data objects:
 ```python
-t, cov_map, contacts, occ_grid = ss.new_action('move', [x,y])
+ss.new_action('move', course)
+t, agent_pos, occ_map, cov_map, cts_grid
 ```
 - "t" is the remaining mission time
-- "cov_map" is the coverage from the pass, with the value being the scan direction.
-- "contacts" is a  list of detections with fields:
-  - `det_n` - detection index
-  - `x` - x coordinate
-  - `y` - y coordinate
-  - `range` - range at which scan was performed (currently unused)
-  - `angle` - angle from which the detection was made
-  - `scan_n` - index of the scan in which the detection was made
-  - `group_n` - index of the group to which the detection belongs
-- "occ_grid" is the occupancy grid in image pixel coordinates. 1 is an occupied location and 0 is unoccupied and can therefore be traveled to. 
+- "agent_pos" is the position of the agent in gridded space, denoted by a 1.
+- "occ_map" is the occupancy grid in image pixel coordinates. 1 is an occupied location and 0 is unoccupied and can therefore be traveled to.
+- "cov_map" is the number of times each grid pixel has been scanned. (soon there will be an extra output for angles).
+- "cts_grid" is the number of contacts detected in each grid pixel.
 
-To save the episode logs:
+To save the episode logs use one of the following:
 ```python
 ss.save_episode()
+ss.save_episode(ep_n)
 ```
+If the episode number, ep_n, is omitted, the episode will be numbered the next available number in the save_dir folder.
 
 ### Playback
-Playback mode is for playing back episode logs. "left" and "right" keys go backwards and forwards through actions.
+Playback mode is for playing back episode logs. "left" and "right" keys go backwards and forwards through actions, or "space" to play/pause.
 `save_dir` is directory of your logs and the extra argument `ep_n` is the episode number to load.
 
 ## Demo
+This is included in example_script.py
 
 ```python
-import survey_simulation
+from survey_simulation import SurveySimulationGrid
 import numpy as np
 
-# example manual run
-ss = survey_simulation.SurveySimulation('manual',
-                                       save_dir='data',
-                                       params_filepath='params.txt')
+# Running manual mode
+ss = SurveySimulationGrid('manual')
 
-# example test run
-ss = survey_simulation.SurveySimulation('test',
-                                       save_dir='data',
-                                       params_filepath='params.txt')
-for n in range(100):
-    rnd_mv = np.random.randint(0,100,size=(2)).tolist()
-    t, cov_map, contacts, occ_grid = ss.new_action('move', rnd_mv)
-    
-    # At two arbitrary steps, demo group and ungroup actions
-    if n==45: 
-        ss.new_action('group', [0,1,2])
-    if n==65:
-        ss.new_action('ungroup', [0])
-        ss.new_action('group', [1,3,4])
-# Save the episode log
-ss.save_episode()
+# Running test mode
+ss = SurveySimulationGrid('test',
+                    save_dir='data')
 
-# Save to a specific episode number (CAUTION. This will delete the episode if it already exists)
-episode_number = 2
-ss.save_episode(episode_number)
+for n in range(500):
+    rnd_heading = np.random.randint(-70,70)
 
-# Playing back data
-ss_pb = survey_simulation.SurveySimulation('playback',
-                                          save_dir='data',
-                                          ep_n=2)
+    ss.new_action('move', rnd_heading)
+    obs = ss.next_step()
 
+    if ss.end_episode:
+        ss.reset()
+
+# Running playback
+ss = SurveySimulationGrid('playback', 
+                            save_dir='data/',
+                            ep_n=2)
 ```
 ## Parameter file
 The parameter file needs to be a txt file with the following entries:
@@ -113,33 +100,39 @@ The parameter file needs to be a txt file with the following entries:
 # Interface settings
 rt: 0
 play_speed: 1
+t_step: 1
+grid_spacing: 1
+plotter: 1
 
 # Agent properties
-agent_start: (55., 190.) 
+#agent_start: (100., 60.) 
 scan_width: 20.
 leadinleadout: 5.
 min_scan_l: 10.
 nadir_width: 3.
 agent_speed: 5.
+scan_thr: 2
 
 # Map properties
-#map_n: 1
+map_n: 2
 #map_path: "maps/Map1.png"
 scan_area_lims: (0, 200, 0, 120)
 map_area_lims: (0, 200, 0, 120) 
-grid_res: 10
 
 # Target and clutter stats
 n_targets: 3 
 det_probs: (0.4, 0.9) 
 loc_uncertainty: 3.
-n_clutter: 8 
-det_prob_clutter: 0.1 
+n_clutter: 100
+clutter_dens: 0.005
+det_probs_clutter: (0.01, 0.05) 
+clutter_or_mean: 45
+clutter_or_std: 0
 
 # Mission parameters
-time_lim: 500.
+time_lim: 800.
 min_scan_angle_diff: 30 
-N_looks: 6 
+N_looks: 3 
 N_angles: 6
 #rand_seed: 50
 ```
@@ -151,8 +144,8 @@ Notes:
 - If both `map_n` and `map_path` are omitted, a blank map will be used and the `scan_area_lims` will be used to generate the size of the map. `scan_area_lims` and `map_area_lims` are ignored if using a map.
 - All of these parameters can be modified by passing the relevant argument to the class upon instantiation of the SurveySimulation object, for example, to change the agent start position:
 ```python 
-ss = survey_simulation.SurveySimulation('manual',
-                                       agent_start=[20,50]))
+ss = SurveySimulationGrid('manual',
+                          agent_start=[20,50]))
 ``` 
 
 ## Log Files Format
@@ -239,23 +232,28 @@ Stored in the EpisodeID_META.txt, contains the following parameters which are re
 ```
 rt: 0
 play_speed: 1
-agent_start: [0, 0]
+t_step: 1
+grid_spacing: 1
+plotter: 1
 scan_width: 20.0
 leadinleadout: 5.0
 min_scan_l: 10.0
 nadir_width: 3.0
 agent_speed: 5.0
+scan_thr: 2
+map_n: 2
 scan_area_lims: [0, 200, 0, 120]
 map_area_lims: [0, 200, 0, 120]
-grid_res: 10
 n_targets: 3
 det_probs: [0.4, 0.9]
 loc_uncertainty: 3.0
-n_clutter: 8
-det_prob_clutter: 0.1
-time_lim: 500.0
+n_clutter: 100
+clutter_dens: 0.005
+det_probs_clutter: [0.01, 0.05]
+clutter_or_mean: 45
+clutter_or_std: 0
+time_lim: 800.0
 min_scan_angle_diff: 30
-N_looks: 6
+N_looks: 3
 N_angles: 6
-rand_seed: 50
 ```
