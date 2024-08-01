@@ -228,9 +228,11 @@ class SurveySimulationGrid():
         # Timer runs out
         if self.timer.time_remaining < 0:
             self.terminate_episode()
+            self.termination_reason = "Run out of time"
         # Hits land
         if self.map_obj.is_occupied(self.agent.xy):
             self.terminate_episode()
+            self.termination_reason = "Grounded"
         # Returns home
         
     def new_action(self,
@@ -310,27 +312,6 @@ class SurveySimulationGrid():
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)
         self.plotter.draw()
-
-    def add_newxy(self, x, y):
-        # add new scan to coverage map
-        x0, y0 = self.agent.xy[0], self.agent.xy[1]
-        rc, ang = self.covmap.add_scan(x0, y0,
-                                        x, y)
-        
-        # check contact detections
-        obs_str = self.contacts.add_dets(rc, ang)
-
-        self.agent.move_to_position([x, y])
-        self.timer.update((x0, y0), (x, y), self.agent.speed)
-
-        # logging
-        self.logger.addmove(x, y)
-        self.logger.addcovmap(self.covmap.map_stack[-1])
-        self.logger.addobservation(obs_str, self.timer.time_remaining)
-
-        # if manual mode, also plot
-        if hasattr(self,'plotter'):
-            self.updateplots()
 
     def add_group(self, c_inds):
         # Add the contacts to a cluster and add to log
