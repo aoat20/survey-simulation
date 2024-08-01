@@ -236,7 +236,7 @@ class SurveySimulationGrid():
     def new_action(self,
                    action_type,
                    action):
-        # for 'move', action = xy
+        # for 'move', action = course
         # for 'group', action = c_inds
         # for 'ungroup' action = g_ind
         action_types = ['move',
@@ -251,24 +251,15 @@ class SurveySimulationGrid():
         # do action
         if action_type == 'move':
             # check move is valid
-            if not all([isinstance(a, int) for a in action]) and len(action) != 2:
-                raise ValueError("Invalid move action. Should be [x,y]")
+            if not all([isinstance(a, int) for a in action]) and len(action) != 1:
+                raise ValueError("Invalid move action. Should be a float representing the course.")
             else:
-                self.add_newxy(action[0], action[1])
-                cov_map = self.covmap.map_stack[-1]
-                t = self.timer.time_remaining
-                cntcts = self.contacts.detections
-                return t, cov_map, cntcts, self.map_obj.occ
-
+                self.agent.set_speedandcourse(self.agent.speed0,
+                                              action)
         elif action_type == 'group':
             self.add_group(action)
         elif action_type == 'ungroup':
             self.remove_group(action)
-
-    def new_move(self, 
-                 course):
-        self.agent.set_speedandcourse(self.agent.speed0,
-                                      course)
 
     def updateplots(self):
         # plotting
