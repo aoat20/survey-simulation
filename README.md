@@ -87,6 +87,7 @@ for n in range(500):
     obs = ss.next_step()
 
     if ss.end_episode:
+        print(ss.termination_reason)
         ss.reset()
 
 # Running playback
