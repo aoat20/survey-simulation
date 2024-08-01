@@ -164,7 +164,7 @@ class SurveySimulationGrid():
             time.sleep(0.04)
 
     def load_params(self,
-                    param_file):
+                    param_file: str):
         param_dict = {}
         with open(param_file) as fh:
             for line in fh:
@@ -236,7 +236,7 @@ class SurveySimulationGrid():
         # Returns home
         
     def new_action(self,
-                   action_type,
+                   action_type: str,
                    action):
         # for 'move', action = course
         # for 'group', action = c_inds
@@ -298,7 +298,9 @@ class SurveySimulationGrid():
         if hasattr(self,'plotter'):
             self.updateplots()
         
-        return self.timer.time_remaining, self.get_gridded_obs()
+        ag_pos, occ_map, cov_map, cts = self.get_gridded_obs()
+
+        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
         
     def next_step_pb(self):
         t, bp, ip, cm, cn, N_g, ah = self.playback.get_data(self.action_id)
