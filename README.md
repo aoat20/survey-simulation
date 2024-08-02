@@ -55,6 +55,8 @@ t, agent_pos, occ_map, cov_map, cts = ss.next_step()
 - "cov_map" is the number of times each grid pixel has been scanned. (soon there will be an extra output for angles).
 - "cts" is the number of contacts detected in each grid pixel.
 
+To check whether the episode has been terminated, check the "end_episode" flag. This can be followed by the checking the "termination_reason" which will give information about why the episode finished.
+
 To save the episode logs use one of the following:
 ```python
 ss.save_episode()
