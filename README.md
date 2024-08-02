@@ -44,16 +44,16 @@ ss.new_action('move', course)
 ss.new_action('group', [c0, c1, c2])
 ss.new_action('ungroup',[g0])
 ```
-"move" action outputs four data objects:
+"next_step" outputs four data objects:
 ```python
 ss.new_action('move', course)
-t, agent_pos, occ_map, cov_map, cts_grid
+t, agent_pos, occ_map, cov_map, cts = ss.next_step()
 ```
 - "t" is the remaining mission time
 - "agent_pos" is the position of the agent in gridded space, denoted by a 1.
 - "occ_map" is the occupancy grid in image pixel coordinates. 1 is an occupied location and 0 is unoccupied and can therefore be traveled to.
 - "cov_map" is the number of times each grid pixel has been scanned. (soon there will be an extra output for angles).
-- "cts_grid" is the number of contacts detected in each grid pixel.
+- "cts" is the number of contacts detected in each grid pixel.
 
 To save the episode logs use one of the following:
 ```python
