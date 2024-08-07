@@ -164,7 +164,7 @@ class SurveySimulationGrid():
             time.sleep(0.04)
 
     def load_params(self,
-                    param_file: str):
+                    param_file):
         param_dict = {}
         with open(param_file) as fh:
             for line in fh:
@@ -228,17 +228,15 @@ class SurveySimulationGrid():
         # Timer runs out
         if self.timer.time_remaining < 0:
             self.terminate_episode()
-            self.termination_reason = "Run out of time"
         # Hits land
         if self.map_obj.is_occupied(self.agent.xy):
             self.terminate_episode()
-            self.termination_reason = "Grounded"
         # Returns home
         
     def new_action(self,
-                   action_type: str,
+                   action_type,
                    action):
-        # for 'move', action = course
+        # for 'move', action = xy
         # for 'group', action = c_inds
         # for 'ungroup' action = g_ind
         action_types = ['move',
@@ -253,16 +251,24 @@ class SurveySimulationGrid():
         # do action
         if action_type == 'move':
             # check move is valid
-            if isinstance(action,int) or isinstance(action,float):
-                self.agent.set_speedandcourse(self.agent.speed0,
-                                              action)
+            if not all([isinstance(a, int) for a in action]) and len(action) != 2:
+                raise ValueError("Invalid move action. Should be [x,y]")
             else:
-                raise ValueError("Invalid move action. Should be " 
-                                 "a float/int representing the course.")
+                self.add_newxy(action[0], action[1])
+                cov_map = self.covmap.map_stack[-1]
+                t = self.timer.time_remaining
+                cntcts = self.contacts.detections
+                return t, cov_map, cntcts, self.map_obj.occ
+
         elif action_type == 'group':
             self.add_group(action)
         elif action_type == 'ungroup':
             self.remove_group(action)
+
+    def new_move(self, 
+                 course):
+        self.agent.set_speedandcourse(self.agent.speed0,
+                                      course)
 
     def updateplots(self):
         # plotting
@@ -298,9 +304,7 @@ class SurveySimulationGrid():
         if hasattr(self,'plotter'):
             self.updateplots()
         
-        ag_pos, occ_map, cov_map, cts = self.get_gridded_obs()
-
-        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
+        return self.timer.time_remaining, self.get_gridded_obs()
         
     def next_step_pb(self):
         t, bp, ip, cm, cn, N_g, ah = self.playback.get_data(self.action_id)
@@ -314,6 +318,27 @@ class SurveySimulationGrid():
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)
         self.plotter.draw()
+
+    def add_newxy(self, x, y):
+        # add new scan to coverage map
+        x0, y0 = self.agent.xy[0], self.agent.xy[1]
+        rc, ang = self.covmap.add_scan(x0, y0,
+                                        x, y)
+        
+        # check contact detections
+        obs_str = self.contacts.add_dets(rc, ang)
+
+        self.agent.move_to_position([x, y])
+        self.timer.update((x0, y0), (x, y), self.agent.speed)
+
+        # logging
+        self.logger.addmove(x, y)
+        self.logger.addcovmap(self.covmap.map_stack[-1])
+        self.logger.addobservation(obs_str, self.timer.time_remaining)
+
+        # if manual mode, also plot
+        if hasattr(self,'plotter'):
+            self.updateplots()
 
     def add_group(self, c_inds):
         # Add the contacts to a cluster and add to log

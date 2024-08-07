@@ -145,7 +145,7 @@ class Playback:
         self.observations = self.load_textfiles(save_dir, 'OBSERVATIONS')
 
     def get_data(self, action_id):
-        #print("Action ID: ", action_id)
+        print("Action ID: ", action_id)
         # get all the data as it would have been at that action
 
         # check whether there was a plan change at the desired action
@@ -285,9 +285,9 @@ class Logger:
         self.truth = []
         self.cov = []
         # add initial conditions
+        self.addmove(agent_start)
         self.addcovmap(np.ones((scan_lims[3]-scan_lims[2],
                                 scan_lims[1]-scan_lims[0]))*np.nan)
-        self.addmove(agent_start)
         self.addtruth(gnd_trth)
         self.addobservation([], time_lim)
         self.addmeta(params)
@@ -299,10 +299,10 @@ class Logger:
                                         "{:.1f}".format(x),
                                         "{:.1f}".format(y),
                                         '\n']))
+        self.action_id_cov.append(self.action_id)
         self.action_id += 1
 
     def addcovmap(self, cov_map):
-        self.action_id_cov.append(self.action_id)
         self.cov.append(cov_map)
 
     def addgroup(self, group_n, c_ind):
