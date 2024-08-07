@@ -10,29 +10,12 @@ from multiprocessing import Process,Queue,Pipe
 
 # ss = SEASSimulation()
 
-# ss = Process(target=SEASSimulation)
-# ss.start()
-
-# print('continue')
-
-# time.sleep(4)
-# print(ss.state)
-
-# print('continued')
-
-# time.sleep(3.1)
-# ss.set_speed_course(speed=5, course=0)
-
 # ss = SurveySimulationGrid('manual',
 #                           save_dir='data')
 
-# ss = SurveySimulation('manual',
-#                       save_dir='data',
-#                       agent_start=[120,100])
-
-ss = SurveySimulation('playback', 
+ss = SurveySimulationGrid('playback', 
                         save_dir='data/',
-                        ep_n=9)
+                        ep_n=3)
 
 if 1:
     start = time.time() 
@@ -47,7 +30,6 @@ if 1:
         if ss.end_episode:
             end = time.time() 
             print("Execution time: ",end - start) 
-            ss.save_episode()
             ss.reset()
             start = time.time() 
 
@@ -62,20 +44,4 @@ if 1:
     #     ss.new_action('ungroup', [0])
     #     ss.new_action('group', [1,2])
 
-# ss.save_episode(2)
 
-# comms1, comms2 = Pipe()
-
-# kw = {'mode':'test', 
-#       'save_dir': 'data', 
-#       'agent_start': [120,100],
-#       'child_conn': comms2}
-
-# p = Process(target=SurveySimulation, kwargs=kw)
-# time.sleep(1)
-# p.start()
-# while 1:
-#     time.sleep(1)
-#     print(comms1.recv())
-#     time.sleep(1) 
-#     comms1.send(['Omg heeeey'])
