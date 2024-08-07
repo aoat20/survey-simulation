@@ -1,13 +1,12 @@
-# import cv2
-import time
-from multiprocessing import Pipe, Process, Queue
-
-import matplotlib.pyplot as plt
+from survey_simulation import SurveySimulation
+from survey_simulation import SurveySimulationGrid
+from survey_simulation import SEASSimulation
 import numpy as np
+import cv2
+import time
+import matplotlib.pyplot as plt
 from PIL import Image
-
-from survey_simulation import (SEASSimulation, SurveySimulation,
-                               SurveySimulationGrid)
+from multiprocessing import Process,Queue,Pipe
 
 # ss = SEASSimulation()
 
@@ -31,9 +30,9 @@ from survey_simulation import (SEASSimulation, SurveySimulation,
 #                       save_dir='data',
 #                       agent_start=[120,100])
 
-# ss = SurveySimulation('playback', 
-#                         save_dir='data/',
-#                         ep_n=9)
+ss = SurveySimulation('playback', 
+                        save_dir='data/',
+                        ep_n=9)
 
 if 1:
     start = time.time() 
