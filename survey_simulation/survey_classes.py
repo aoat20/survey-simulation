@@ -19,14 +19,16 @@ def is_point_in_polygon(point, polygon_corners):
     for i in range(n):
         x1, y1 = polygon_corners[i]
         x2, y2 = polygon_corners[(i + 1) % n]
-        if y > min(y1, y2):
-            if y <= max(y1, y2):
-                if x <= max(x1, x2):
-                    if y1 != y2:
-                        x_inters = (y - y1)*(x2 - x1)/(y2 - y1) + x1
-                        if x1 == x2 or x < x_inters:
-                            inside = not inside
+        
+        if y > min(y1, y2) \
+           and y <= max(y1, y2) \
+           and x <= max(x1, x2) \
+           and y1 != y2:
+            x_inters = (y - y1)*(x2 - x1)/(y2 - y1) + x1
+            if x1 == x2 or x < x_inters:
+                inside = not inside
     return inside 
+
 
 class CoverageMap:
     """_summary_
