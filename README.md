@@ -19,8 +19,8 @@ Import the package and initialise a sim object with mode, param filepath and sav
 ```python 
 from survey_simulation import SurveySimulationGrid
 ss = SurveySimulationGrid(mode,
-                                       params_filepath,
-                                       save_dir)
+                          params_filepath,
+                          save_dir)
 
 ```
 
@@ -79,7 +79,7 @@ ss = SurveySimulationGrid('manual')
 
 # Running test mode
 ss = SurveySimulationGrid('test',
-                    save_dir='data')
+                          save_dir='data')
 
 for n in range(500):
     rnd_heading = np.random.randint(-70,70)
@@ -93,8 +93,8 @@ for n in range(500):
 
 # Running playback
 ss = SurveySimulationGrid('playback', 
-                            save_dir='data/',
-                                          ep_n=2)
+                          save_dir='data/',
+                          ep_n=2)
 ```
 
 ## Parameter file
