@@ -10,9 +10,9 @@ import matplotlib.pyplot as plt
 ss = SurveySimulationGrid('manual',
                           save_dir='data')
 
-ss = SurveySimulationGrid('playback', 
-                        save_dir='data/',
-                        ep_n=2)
+# ss = SurveySimulationGrid('playback', 
+#                         save_dir='data/',
+#                         ep_n=2)
 
 if 0:
     start = time.time() 
