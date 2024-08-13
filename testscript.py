@@ -2,22 +2,19 @@ from survey_simulation import SurveySimulation
 from survey_simulation import SurveySimulationGrid
 from survey_simulation import SEASSimulation
 import numpy as np
-import cv2
 import time
 import matplotlib.pyplot as plt
-from PIL import Image
-from multiprocessing import Process,Queue,Pipe
 
 # ss = SEASSimulation()
 
-# ss = SurveySimulationGrid('manual',
-#                           save_dir='data')
+ss = SurveySimulationGrid('manual',
+                          save_dir='data')
 
 ss = SurveySimulationGrid('playback', 
                         save_dir='data/',
-                        ep_n=3)
+                        ep_n=2)
 
-if 1:
+if 0:
     start = time.time() 
  
     ss = SurveySimulationGrid('test',

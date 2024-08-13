@@ -9,7 +9,6 @@ setuptools.setup(
     url='https://github.com/aoat20/survey-simulation',
     license='Not yet licensed', 
     packages=['survey_simulation'],
-    install_requires=['opencv-python', 
-                      'matplotlib', 
+    install_requires=['matplotlib', 
                       'numpy'],
 )
