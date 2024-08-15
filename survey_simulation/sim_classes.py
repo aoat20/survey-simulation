@@ -433,9 +433,9 @@ class Logger:
         self.truth = []
         self.cov = []
         # add initial conditions
-        self.addmove(agent_start)
         self.addcovmap(np.ones((scan_lims[3]-scan_lims[2],
                                 scan_lims[1]-scan_lims[0]))*np.nan)
+        self.addmove(agent_start)
         self.addtruth(new_contactstrth)
         self.addobservation([], time_lim)
 
