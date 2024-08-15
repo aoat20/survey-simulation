@@ -3,7 +3,7 @@ rt: 0
 play_speed: 1
 t_step: 1
 grid_spacing: 1
-plotter: 1
+plotter: 0
 
 # Agent properties
 #agent_start: (100., 60.) 

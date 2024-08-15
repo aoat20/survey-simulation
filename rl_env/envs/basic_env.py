@@ -8,7 +8,20 @@ from survey_simulation import SEASSimulation
 
 class BasicEnv(gym.Env):
 
-    def __init__(self,params_filepath) -> gym.Env:
+    '''
+    Basic environment for the survey simulation
+    observation space - time step
+    action space - move in 360 / n_actions degree increments
+    
+
+    plan:
+    - build out the observation space to include agent position, occupancy map, coverage map, contacts]
+    - build out the action space to include move, group, ungroup, etc
+    '''
+
+
+
+    def __init__(self,params_filepath, **kwargs) -> gym.Env:
 
         default_config = {}
         self.config = default_config
@@ -19,6 +32,8 @@ class BasicEnv(gym.Env):
         self.survey_simulation = SurveySimulationGrid('test',
                                                       save_dir='data',
                                                       params_filepath = params_filepath) #initialize the survey simulation in manual mode
+        
+        self.save_logs = kwargs.get('save_logs', False)
 
 
 
@@ -55,6 +70,7 @@ class BasicEnv(gym.Env):
 
 
 
+
         return observation, reward, terminated, truncated, info , done
 
 
@@ -84,6 +100,10 @@ class BasicEnv(gym.Env):
     def reset(self, *, seed, options) :
         super().reset(seed=seed)
 
+
+        if self.save_logs:
+            self.survey_simulation.save_episode()
+
         info = {}
         self.survey_simulation.reset()
 
@@ -98,16 +118,23 @@ class BasicEnv(gym.Env):
 
 #test the environment
 
-env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt')
+
+kwargs = {
+    'save_logs': True
+}
+
+env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt',**kwargs)
 print(env.observation_space)
 print(env.action_space)
 
 obs = env.reset(seed=0,options={})
 print(obs)
 
-for i in range(1000):
-    action = env.action_space.sample()
-    print (action)
+for i in range(300):
+    # action = env.action_space.sample()
+    action = 0
+
+    print (env.actions[action])
     obs, reward, terminated, truncated, info, done = env.step(action)
     print(obs, reward, terminated, truncated, info, done)
     if terminated:
