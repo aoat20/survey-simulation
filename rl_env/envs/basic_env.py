@@ -6,6 +6,12 @@ from survey_simulation import SurveySimulation
 from survey_simulation import SurveySimulationGrid
 from survey_simulation import SEASSimulation
 
+
+
+from stable_baselines3 import PPO
+from stable_baselines3.common.env_checker import check_env
+
+
 class BasicEnv(gym.Env):
 
     '''
@@ -46,7 +52,7 @@ class BasicEnv(gym.Env):
 
         #this should match the observation space of the simulation
         #next step returns a tuple (t, agent_pos, occ_map, cov_map, cts)
-        self.observation_space = spaces.Box(low=0, high=1, shape=(1,)) #for now just return the time step
+        self.observation_space = spaces.Box(low=0, high=1, shape=(1,), dtype=np.float64) #for now just return the time step
 
 
     def step(self, action):
@@ -71,7 +77,7 @@ class BasicEnv(gym.Env):
 
 
 
-        return observation, reward, terminated, truncated, info , done
+        return observation, reward, terminated, truncated, info 
 
 
 
@@ -89,15 +95,23 @@ class BasicEnv(gym.Env):
 
 
         #for now just return the time step we will add more later
-        observation = t / self.survey_simulation.timer.time_lim
+        observation = np.array([t / self.survey_simulation.timer.time_lim])
         return observation
     
     def get_reward(self):
 
-        reward = -1 #default reward is -1 for each step to minimize the number of steps
+        # reward = -1 #default reward is -1 for each step to minimize the number of steps
+
+        #updated reward function here (base it on the coverage map)
+
+
+        cov_map_non_zero =  np.count_nonzero(~np.isnan(self.survey_simulation.covmap.map_stack),
+                                            axis=0)
+        reward = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
+
         return reward
 
-    def reset(self, *, seed, options) :
+    def reset(self, *, seed = None, options = None) :
         super().reset(seed=seed)
 
 
@@ -120,24 +134,43 @@ class BasicEnv(gym.Env):
 
 
 kwargs = {
-    'save_logs': True
+    'save_logs': False
 }
 
 env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt',**kwargs)
-print(env.observation_space)
-print(env.action_space)
+# print(env.observation_space)
+# print(env.action_space)
 
-obs = env.reset(seed=0,options={})
-print(obs)
+# obs = env.reset(seed=0,options={})
+# print(obs)
 
-for i in range(300):
-    # action = env.action_space.sample()
-    action = 0
 
-    print (env.actions[action])
-    obs, reward, terminated, truncated, info, done = env.step(action)
-    print(obs, reward, terminated, truncated, info, done)
-    if terminated:
-        env.reset(seed=0,options={})
-        print('resetting')
+# action = 1
+
+# for i in range(100):
+#     # action = env.action_space.sample()
+
+#     obs, reward, terminated, truncated, info, done = env.step(action)
+#     #every 5 steps increment action by 1
+#     if i % 15 == 0:
+#         action += 5
+#     if reward > 0:
+#         print('reward:', reward)
+
+#     if terminated:
+#         action = 1
+#         env.reset(seed=0,options={})
+#         print('resetting')
+
+
+#check the environment with sb3
+
+check_env(env)
+
+
+#train the environment with sb3
+
+model = PPO("MlpPolicy", env, verbose = 1)
+model.learn(total_timesteps=1e6)
+model.save("ppo_survey_simulation_test")
 

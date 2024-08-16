@@ -20,4 +20,5 @@ import numpy as np
 # Running playback
 ss = SurveySimulationGrid('playback', 
                             save_dir='data/',
-                            ep_n=50)
+                            ep_n=2
+                            )

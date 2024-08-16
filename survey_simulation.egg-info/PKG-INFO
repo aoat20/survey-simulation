@@ -1,4 +1,4 @@
-Metadata-Version: 1.0
+Metadata-Version: 2.1
 Name: survey-simulation
 Version: 0.30
 Summary: Simple survey simulation
@@ -6,5 +6,5 @@ Home-page: https://github.com/aoat20/survey-simulation
 Author: Alfie Anthony Treloar
 Author-email: aoat20@bath.ac.uk
 License: Not yet licensed
-Description: UNKNOWN
-Platform: UNKNOWN
+Requires-Dist: matplotlib
+Requires-Dist: numpy
