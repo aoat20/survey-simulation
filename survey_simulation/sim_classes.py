@@ -475,11 +475,12 @@ class Map:
 
     def is_occupied(self, xy):
         ml = self.map_lims
+        xy_rnd = np.int16(np.floor(xy))
         # check whether the coordinate is in an occupied 
         if xy[0]<ml[0] or xy[0]>ml[1] or xy[1]<ml[2] or xy[1]>ml[3]:
             return 1
             raise Exception("agent position is not within the bounds of the map")
-        elif self.occ[round(xy[1]),round(xy[0])]:
+        elif self.occ[xy_rnd[1],xy_rnd[0]]:
             return 1
             raise Exception("agent position is an occupied coordinate of the map")
 
