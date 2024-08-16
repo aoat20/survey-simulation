@@ -199,8 +199,10 @@ class SurveySimulationGrid():
         agent_pos_grid = np.zeros((self.map_obj.map_lims[3],
                                    self.map_obj.map_lims[1]))
         ag_pos_rnd = np.int16(np.floor(self.agent.xy))
-        agent_pos_grid[ag_pos_rnd[1],
-                       ag_pos_rnd[0]] = 1
+        if not self.map_obj.is_occupied(self.agent.xy):
+            agent_pos_grid[ag_pos_rnd[1],
+                        ag_pos_rnd[0]] = 1
+            
         # Occupancy map 
         occ_map_grid = self.map_obj.occ
         # Coverage map summary 
@@ -285,25 +287,25 @@ class SurveySimulationGrid():
             self.agent.advance_one_step(self.timer.t_step)
             self.logger.addmove(self.agent.xy)
 
+        # check if path is still straight and if not, 
+        # compute the previous coverage and contacts
+        ind0 = self.agent.check_path_straightness()
+        if ind0 is not None:
+            rc, ang = self.covmap.add_scan(self.agent.xy_hist[ind0],
+                                        self.agent.xy_hist[-2])
+            # check contact detections
+            obs_str = self.contacts.add_dets(rc, ang)
+            self.logger.addcovmap(self.covmap.map_stack[-1])
+            self.logger.addobservation(obs_str, self.timer.time_remaining)
+
+        if hasattr(self,'plotter'):
+            self.updateplots()
+        
+        ag_pos, occ_map, cov_map, cts = self.get_gridded_obs()
+        
         self.check_termination()
-        if not self.end_episode:
-            # check if path is still straight and if not, 
-            # compute the previous coverage and contacts
-            ind0 = self.agent.check_path_straightness()
-            if ind0 is not None:
-                rc, ang = self.covmap.add_scan(self.agent.xy_hist[ind0],
-                                            self.agent.xy_hist[-2])
-                # check contact detections
-                obs_str = self.contacts.add_dets(rc, ang)
-                self.logger.addcovmap(self.covmap.map_stack[-1])
-                self.logger.addobservation(obs_str, self.timer.time_remaining)
 
-            if hasattr(self,'plotter'):
-                self.updateplots()
-            
-            ag_pos, occ_map, cov_map, cts = self.get_gridded_obs()
-
-            return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
+        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
         
     def next_step_pb(self):
         t, bp, ip, cm, cn, N_g, ah = self.playback.get_data(self.action_id)
