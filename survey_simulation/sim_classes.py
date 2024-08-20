@@ -94,6 +94,14 @@ class Agent:
         self.course = course
         self.compute_movement_step()
 
+    def get_current_path_len(self):
+        # return the number of times agent has moved in a straight line 
+        p_st = self.ind0
+        p_end = len(self.xy_hist)
+        path_n = p_end - p_st
+
+        return path_n
+
     def check_path_straightness(self):
         # 
         points = self.xy_hist[self.ind0:]
