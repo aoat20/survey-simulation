@@ -134,7 +134,7 @@ class BasicEnv(gym.Env):
 
 
 kwargs = {
-    'save_logs': False
+    'save_logs':True
 }
 
 env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt',**kwargs)
@@ -165,12 +165,33 @@ env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt
 
 #check the environment with sb3
 
-check_env(env)
+# check_env(env)
 
 
 #train the environment with sb3
 
-model = PPO("MlpPolicy", env, verbose = 1)
-model.learn(total_timesteps=1e6)
-model.save("ppo_survey_simulation_test")
+
+
+# model = PPO("MlpPolicy", env, verbose = 1, n_steps=5000, n_epochs=2)
+# model.learn(total_timesteps=10e6)
+# model.save("ppo_survey_simulation_test_2")
+
+
+
+model_path = 'ppo_survey_simulation_test_2.zip'
+model = PPO.load(model_path)
+
+obs , info = env.reset(seed=0,options={})
+print   (obs)
+
+
+for i in range(1000):
+    action  = model.predict(obs)
+    print (action)
+    obs, reward, terminated, truncated, info = env.step(action[0])
+    env.render()
+
+    if terminated:
+        obs, info = env.reset(seed=0,options={})
+        print('resetting')
 
