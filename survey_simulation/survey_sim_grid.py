@@ -206,12 +206,13 @@ class SurveySimulationGrid():
         # Occupancy map 
         occ_map_grid = self.map_obj.occ
         # Coverage map summary 
-        if self.covmap.map_stack:
-            cov_map_grid = np.count_nonzero(~np.isnan(self.covmap.map_stack),
-                                            axis=0)
-        else: 
-            cov_map_grid = np.zeros((self.map_obj.map_lims[3],
+        cov_map_grid = np.zeros((self.map_obj.map_lims[3],
                                      self.map_obj.map_lims[1]))
+        if self.covmap.map_stack:
+            sa = self.map_obj.scan_lims
+            cov_map_grid[sa[2]:sa[3],
+                         sa[0]:sa[1]] = np.count_nonzero(~np.isnan(self.covmap.map_stack),
+                                            axis=0)
 
         # Contacts
         cts_grid = np.zeros((self.map_obj.map_lims[3],
