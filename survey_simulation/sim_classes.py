@@ -94,18 +94,32 @@ class Agent:
         self.course = course
         self.compute_movement_step()
 
+    def get_current_path_len(self):
+        # return the number of times agent has moved in a straight line 
+        p_st = self.ind0
+        p_end = len(self.xy_hist)
+        path_n = p_end - p_st
+
+        return path_n
+
     def check_path_straightness(self):
-        # 
+        # Check whether path is straight 
+        # Get all points being conisidered
         points = self.xy_hist[self.ind0:]
+        #first point
         p1 = points[0]
+        # most recent point
         p2 = points[-1]
         d = []
+        # Check there's at least 3 points
         if len(points)>2:
+            # Get all linear distances from the straight line between p1 and p2
             for xy in points[1:-1]:
                 d.append(np.abs(np.cross(p2-p1, 
                                          p1-xy))/np.linalg.norm(p2-p1))
-
-            if max(d)>self.scan_thr:
+            # Ensure it's still going in the same directions with signs
+            dxdy = np.sign(np.diff(self.xy_hist[-3:],1,0))
+            if max(d)>self.scan_thr or any(dxdy[0,:] != dxdy[1,:]):
                 ind0_out = self.ind0
                 self.ind0 = len(self.xy_hist)-2
                 return ind0_out
