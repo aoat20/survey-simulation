@@ -31,15 +31,27 @@ class BasicEnv(gym.Env):
 
         default_config = {}
         self.config = default_config
+        
 
-        self.set_action_space()
-        self.set_observation_space()
+        implemented_obs = ['time_only', 'coverage_occupancy']
+
 
         self.survey_simulation = SurveySimulationGrid('test',
                                                       save_dir='data',
                                                       params_filepath = params_filepath) #initialize the survey simulation in manual mode
         
         self.save_logs = kwargs.get('save_logs', False)
+
+        self.obs_type = kwargs.get('obs_type', 'time_only')
+
+        if self.obs_type not in implemented_obs:
+            raise NotImplementedError('Observation type not implemented')
+        
+
+
+        self.set_action_space()
+        self.set_observation_space()
+
 
 
 
@@ -52,7 +64,17 @@ class BasicEnv(gym.Env):
 
         #this should match the observation space of the simulation
         #next step returns a tuple (t, agent_pos, occ_map, cov_map, cts)
-        self.observation_space = spaces.Box(low=0, high=1, shape=(1,), dtype=np.float64) #for now just return the time step
+        if self.obs_type == 'time_only':
+            self.observation_space = spaces.Box(low=0, high=1, shape=(1,), dtype=np.float64) #for now just return the time step
+
+        if self.obs_type == 'coverage_occupancy':
+            #get the occupancy map and coverage map shape
+            occ_map_shape = self.survey_simulation.map_obj.occ.shape
+            cov_map_shape = occ_map_shape #coverage map is the same shape as the occupancy map
+            #concatenate the occupancy map and coverage map to get the observation space in to get a 3d observation space
+            obs_shape = (2, *occ_map_shape)
+            
+            self.observation_space = spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float64)
 
 
     def step(self, action):
@@ -94,8 +116,19 @@ class BasicEnv(gym.Env):
 
 
 
+
+
         #for now just return the time step we will add more later
-        observation = np.array([t / self.survey_simulation.timer.time_lim])
+
+        if self.obs_type == 'time_only':
+            observation = np.array([t / self.survey_simulation.timer.time_lim])
+        if self.obs_type == 'coverage_occupancy':
+            #stack in new axis
+            print (occ_map.shape, 'occ_map')
+            print (cov_map.shape, 'cov_map')
+            observation = np.stack([occ_map, cov_map], axis=0)
+
+
         return observation
     
     def get_reward(self):
@@ -103,11 +136,17 @@ class BasicEnv(gym.Env):
         # reward = -1 #default reward is -1 for each step to minimize the number of steps
 
         #updated reward function here (base it on the coverage map)
+        step_scale = 100
 
 
         cov_map_non_zero =  np.count_nonzero(~np.isnan(self.survey_simulation.covmap.map_stack),
                                             axis=0)
         reward = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
+
+
+        #reward every step with straight line, then end of section with covered area
+        step_reward = self.survey_simulation.agent.get_current_path_len()  / step_scale#reward for moving straight
+        reward += step_reward #add the step reward to the total reward 
 
         return reward
 
@@ -133,16 +172,23 @@ class BasicEnv(gym.Env):
 #test the environment
 
 
+# kwargs = {
+#     'save_logs':False,
+#     'obs_type':'coverage_occupancy'
+# }
+
+
 kwargs = {
-    'save_logs':True
+    'save_logs':False,
+    'obs_type':'time_only'
 }
 
 env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt',**kwargs)
-# print(env.observation_space)
-# print(env.action_space)
+print(env.observation_space)
+print(env.action_space)
 
-# obs = env.reset(seed=0,options={})
-# print(obs)
+obs = env.reset(seed=0,options={})
+print(obs)
 
 
 # action = 1
@@ -150,7 +196,7 @@ env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt
 # for i in range(100):
 #     # action = env.action_space.sample()
 
-#     obs, reward, terminated, truncated, info, done = env.step(action)
+#     obs, reward, terminated, truncated, info = env.step(action)
 #     #every 5 steps increment action by 1
 #     if i % 15 == 0:
 #         action += 5
@@ -173,25 +219,28 @@ env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt
 
 
 # model = PPO("MlpPolicy", env, verbose = 1, n_steps=5000, n_epochs=2)
-# model.learn(total_timesteps=10e6)
-# model.save("ppo_survey_simulation_test_2")
-
-
 
 model_path = 'ppo_survey_simulation_test_2.zip'
-model = PPO.load(model_path)
+model = PPO.load(model_path, env=env, verbose = 1)
+model.learn(total_timesteps=1e6)
+model.save("ppo_survey_simulation_test_3")
 
-obs , info = env.reset(seed=0,options={})
-print   (obs)
 
 
-for i in range(1000):
-    action  = model.predict(obs)
-    print (action)
-    obs, reward, terminated, truncated, info = env.step(action[0])
-    env.render()
+# model_path = 'ppo_survey_simulation_test_3.zip'
+# model = PPO.load(model_path)
 
-    if terminated:
-        obs, info = env.reset(seed=0,options={})
-        print('resetting')
+# obs , info = env.reset(seed=0,options={})
+# print   (obs)
+
+
+# for i in range(1000):
+#     action  = model.predict(obs)
+#     print (action)
+#     obs, reward, terminated, truncated, info = env.step(action[0])
+#     env.render()
+
+#     if terminated:
+#         obs, info = env.reset(seed=0,options={})
+#         print('resetting')
 
