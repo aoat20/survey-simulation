@@ -1,15 +1,12 @@
 import gymnasium as gym
 from gymnasium import spaces
+
 print (gym.__version__)
 import numpy as np
-from survey_simulation import SurveySimulation
-from survey_simulation import SurveySimulationGrid
-from survey_simulation import SEASSimulation
-
-
-
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
+from survey_simulation import (SEASSimulation, SurveySimulation,
+                               SurveySimulationGrid)
 
 
 class BasicEnv(gym.Env):
@@ -172,7 +169,7 @@ class BasicEnv(gym.Env):
 
 
 kwargs = {
-    'save_logs':True,
+    'save_logs':False,
     'obs_type':'coverage_occupancy'
 }
 
@@ -218,28 +215,28 @@ env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt
 
 
 # # model = PPO("MlpPolicy", env, verbose = 1, n_steps=5000, n_epochs=2)
-# model = PPO("CnnPolicy", env, verbose = 1, n_steps=5000, n_epochs=2, policy_kwargs={'normalize_images':False})
+model = PPO("CnnPolicy", env, verbose = 1, n_steps=5000, n_epochs=2, policy_kwargs={'normalize_images':False})
 # # model_path = 'ppo_survey_simulation_test_2.zip'
 # # model = PPO.load(model_path, env=env, verbose = 1)
-# model.learn(total_timesteps=1e6)
-# model.save("ppo_survey_simulation_test_1_cov")
+model.learn(total_timesteps=1e6)
+model.save("ppo_survey_simulation_test_2_cov")
 
 
 
-model_path = 'ppo_survey_simulation_test_1_cov'
-model = PPO.load(model_path)
+# model_path = 'ppo_survey_simulation_test_1_cov'
+# model = PPO.load(model_path)
 
-obs , info = env.reset(seed=0,options={})
-print   (obs)
+# obs , info = env.reset(seed=0,options={})
+# print   (obs)
 
 
-for i in range(1000):
-    action  = model.predict(obs)
-    print (action)
-    obs, reward, terminated, truncated, info = env.step(action[0])
-    env.render()
+# for i in range(1000):
+#     action  = model.predict(obs)
+#     print (action)
+#     obs, reward, terminated, truncated, info = env.step(action[0])
+#     env.render()
 
-    if terminated:
-        obs, info = env.reset(seed=0,options={})
-        print('resetting')
+#     if terminated:
+#         obs, info = env.reset(seed=0,options={})
+#         print('resetting')
 

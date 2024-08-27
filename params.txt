@@ -6,7 +6,7 @@ grid_spacing: 1
 plotter: 0
 
 # Agent properties
-random_start: 0
+random_start: 2
 #agent_start: (100., 60.) 
 scan_width: 20.
 leadinleadout: 5.
