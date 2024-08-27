@@ -21,7 +21,7 @@ class Agent:
         if type(xy_start[0]) is float:
             xy_st = xy_start
         else:
-            rnd_n = random.randint(0,len(xy_start[0]))
+            rnd_n = random.randint(0,len(xy_start[0])-1)
             xy_st = [xy_start[1][rnd_n],
                      xy_start[0][rnd_n]]
 
@@ -149,7 +149,7 @@ class Agent:
         if type(self.xy_start_candidates[0]) is float:
             xy_st = self.xy_start_candidates
         else:
-            rnd_n = random.randint(0,len(self.xy_start_candidates[0]))
+            rnd_n = random.randint(0,len(self.xy_start_candidates[0])-1)
             xy_st = [self.xy_start_candidates[1][rnd_n],
                      self.xy_start_candidates[0][rnd_n]]
         
