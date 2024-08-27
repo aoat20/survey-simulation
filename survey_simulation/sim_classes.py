@@ -4,24 +4,34 @@ import math
 import shutil
 from survey_simulation.survey_classes import Detection
 from PIL import Image
+import random
 
 class Agent:
 
     def __init__(self, 
-                 xy_start=[0,0],
-                 course=None, 
-                 speed=0,
+                 xy_start = [0,0],
+                 course = None, 
+                 speed = 0,
                  scan_thr = 0):
         # 
         self.speed0 = speed
         self.course0 = course
         self.course = course
-        self.xy = xy_start
-        self.xy_hist = [np.array(xy_start)]
-        self.xy_step = [0,0]
-        self.destination = xy_start
+        self.xy_start_candidates = xy_start
+        if type(xy_start[0]) is float:
+            xy_st = xy_start
+        else:
+            rnd_n = random.randint(0,len(xy_start[0]))
+            xy_st = [xy_start[1][rnd_n],
+                     xy_start[0][rnd_n]]
+
+        self.xy = xy_st
+        self.xy_hist = [np.array(xy_st)]
+        self.xy_step = [0, 0]
+        self.destination = xy_st
         self.distance_dest = np.inf
         self.distance_travelled = 0
+
         # If the course is not set, don't move
         if course is None:
             self.speed = 0
@@ -135,9 +145,17 @@ class Agent:
         else:
             self.speed = self.speed0
             self.compute_movement_step()
-        self.xy = self.xy_hist[0].tolist()
-        self.xy_hist = [self.xy_hist[0]]
-        self.xy_leg0 = self.xy_hist[0].tolist()
+
+        if type(self.xy_start_candidates[0]) is float:
+            xy_st = self.xy_start_candidates
+        else:
+            rnd_n = random.randint(0,len(self.xy_start_candidates[0]))
+            xy_st = [self.xy_start_candidates[1][rnd_n],
+                     self.xy_start_candidates[0][rnd_n]]
+        
+        self.xy = xy_st
+        self.xy_hist = [np.array(self.xy)]
+        self.xy_leg0 = self.xy
         self.destination = [0,0]
         self.distance_dest = np.inf
         self.distance_travelled = 0
@@ -508,7 +526,16 @@ class Map:
             return def_starts[self.map_n-1]
         except:
             raise Exception("You need to specify an agent_start position")
- 
+
+    def random_start(self):
+        coords_unocc = np.where(self.occ==0)
+        return coords_unocc
+
+    def random_start_edges(self): 
+        coords_edge = np.concatenate((np.where(np.diff(self.occ,1,0)), 
+                                      np.where(np.diff(self.occ,1,1))),1)
+        return coords_edge
+
     def check_path(self, 
                    x1i, 
                    y1i, 

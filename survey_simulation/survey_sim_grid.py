@@ -71,18 +71,25 @@ class SurveySimulationGrid():
                                map_lims=params['map_area_lims'])
 
         # Set the agent start position 
-        if 'agent_start' in params:
-            agent_start = params['agent_start']
+        if params.get('random_start') == 1:
+            # Random start anywhere
+            agent_start = self.map_obj.random_start()
+        elif params.get('random_start') == 2:
+            # Random start edges
+            agent_start = self.map_obj.random_start_edges()
         else:
-            agent_start = self.map_obj.default_start()
-
-        # Check if agent start position is in the map bounds
-        self.map_obj.is_occupied(agent_start)
+            # use specified start if available, else default for map
+            if 'agent_start' in params:
+                agent_start = params['agent_start']
+            else:
+                agent_start = self.map_obj.default_start()
 
         # Get t step and grid spacing
         self.agent = Agent(xy_start=agent_start,
                            speed=params['agent_speed'],
                            scan_thr = params['scan_thr'])
+        # Check if agent start position is in the map bounds
+        self.map_obj.is_occupied(self.agent.xy)
         self.contacts = ContactDetections(loc_uncertainty=params['loc_uncertainty'],
                                           scan_lims=self.map_obj.scan_lims, 
                                           n_targets=params['n_targets'],
