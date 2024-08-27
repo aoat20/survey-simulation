@@ -430,27 +430,31 @@ class AgentViz:
         self.plt_ag = axs[0][0].imshow(im_init,
                                        vmin=0,
                                        vmax=1,
-                                       cmap='magma')
+                                       cmap='magma',
+                                       origin='lower')
         # 
         axs[0][1].set_title('Occupancy grid')
         self.plt_occ = axs[0][1].imshow(im_init,
                                         vmin=0,
                                         vmax=1,
-                                        cmap='magma')
+                                        cmap='magma',
+                                        origin='lower')
 
         # 
         axs[1][0].set_title('Coverage map')
         self.plt_cov = axs[1][0].imshow(im_init,
                                         vmin=0,
                                         vmax=5,
-                                        cmap='magma')
+                                        cmap='magma',
+                                        origin='lower')
 
         #
         axs[1][1].set_title('Contacts')
         self.plt_cts = axs[1][1].imshow(im_init,
                                         vmin=0,
                                         vmax=3,
-                                        cmap='magma')
+                                        cmap='magma',
+                                        origin='lower')
         plt.ion()
         plt.show()
 
