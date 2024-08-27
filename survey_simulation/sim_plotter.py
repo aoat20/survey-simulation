@@ -98,9 +98,9 @@ class Plotter:
             hue_val = 250
         # make hsv image
         map_hsv[:, :, 0] = np.ones((m_y,
-                                            m_x))*hue_val
+                                    m_x))*hue_val
         map_hsv[:, :, 1] = np.ones((m_y,
-                                            m_x))
+                                    m_x))
         map_hsv[:, :, 2] = np.clip(map_cnt/self.n_looks, 0, 1)
         # plot new coverage map
 
@@ -413,3 +413,56 @@ class SEASPlotter(Plotter):
                                                 course = 0))
         self.updateps(1)
         self.ax.figure.canvas.draw()
+
+class AgentViz:
+    """
+    """
+
+    def __init__(self,
+                 map_dims):
+        
+        im_init = np.zeros((map_dims[3]-map_dims[2],
+                            map_dims[1]-map_dims[0]))
+
+        self.fig, axs = plt.subplots(2,2, layout='constrained')
+        # Agent pos
+        axs[0][0].set_title('Agent position')
+        self.plt_ag = axs[0][0].imshow(im_init,
+                                       vmin=0,
+                                       vmax=1,
+                                       cmap='magma')
+        # 
+        axs[0][1].set_title('Occupancy grid')
+        self.plt_occ = axs[0][1].imshow(im_init,
+                                        vmin=0,
+                                        vmax=1,
+                                        cmap='magma')
+
+        # 
+        axs[1][0].set_title('Coverage map')
+        self.plt_cov = axs[1][0].imshow(im_init,
+                                        vmin=0,
+                                        vmax=5,
+                                        cmap='magma')
+
+        #
+        axs[1][1].set_title('Contacts')
+        self.plt_cts = axs[1][1].imshow(im_init,
+                                        vmin=0,
+                                        vmax=3,
+                                        cmap='magma')
+        plt.ion()
+        plt.show()
+
+    def update(self, 
+               ag_im,
+               occ_im,
+               cov_im,
+               con_im):
+        
+        self.plt_ag.set_data(ag_im)
+        self.plt_occ.set_data(occ_im)
+        self.plt_cov.set_data(cov_im)
+        self.plt_cts.set_data(con_im)
+        self.fig.canvas.draw_idle()
+        plt.pause(0.0001)
