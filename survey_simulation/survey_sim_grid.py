@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import time
-from survey_simulation.sim_plotter import SurveyPlotter
+from survey_simulation.sim_plotter import SurveyPlotter, AgentViz
 from survey_simulation.survey_classes import ContactDetections, CoverageMap
 from survey_simulation.sim_classes import Timer, Playback, Logger, Map, Agent
 import matplotlib.pyplot as plt
@@ -104,6 +104,9 @@ class SurveySimulationGrid():
                                   scan_width=params['scan_width'],
                                   nadir_width=params['nadir_width'])
         
+        if params.get('agent_viz'):
+            self.agent_viz = AgentViz(map_dims=self.map_obj.map_lims)
+        
         if mode == "manual" or mode == 'test':
             # Generate contact locations
             self.contacts.generate_targets(self.map_obj.occ)
@@ -201,31 +204,37 @@ class SurveySimulationGrid():
 
         return param_dict
 
-    def get_gridded_obs(self):
+    def get_gridded_obs(self,
+                        agent_xy,
+                        cov_map,
+                        contacts):
         # Agent position on a grid
         agent_pos_grid = np.zeros((self.map_obj.map_lims[3],
-                                   self.map_obj.map_lims[1]))
-        ag_pos_rnd = np.int16(np.floor(self.agent.xy))
-        if not self.map_obj.is_occupied(self.agent.xy):
+                                   self.map_obj.map_lims[1]), 
+                                   dtype=int)
+        ag_pos_rnd = np.int16(np.floor(agent_xy))
+        if not self.map_obj.is_occupied(agent_xy):
             agent_pos_grid[ag_pos_rnd[1],
-                        ag_pos_rnd[0]] = 1
+                           ag_pos_rnd[0]] = 1
             
         # Occupancy map 
         occ_map_grid = self.map_obj.occ
+
         # Coverage map summary 
         cov_map_grid = np.zeros((self.map_obj.map_lims[3],
-                                     self.map_obj.map_lims[1]))
-        if self.covmap.map_stack:
+                                 self.map_obj.map_lims[1]), dtype=int)
+        if cov_map:
             sa = self.map_obj.scan_lims
             cov_map_grid[sa[2]:sa[3],
-                         sa[0]:sa[1]] = np.count_nonzero(~np.isnan(self.covmap.map_stack),
-                                            axis=0)
+                         sa[0]:sa[1]] = np.count_nonzero(~np.isnan(cov_map),
+                                                         axis=0)
+        cov_map_grid = np.flip(cov_map_grid, 0)
 
         # Contacts
         cts_grid = np.zeros((self.map_obj.map_lims[3],
-                             self.map_obj.map_lims[1]))
+                             self.map_obj.map_lims[1]), dtype=int)
         base = 1
-        for cts in self.contacts.detections:
+        for cts in contacts:
             xy = [cts.x, cts.y]
             c_xy_rnd =  np.int16(base * np.round(np.divide(xy, base)))
             cts_grid[c_xy_rnd[1], 
@@ -300,7 +309,7 @@ class SurveySimulationGrid():
         ind0 = self.agent.check_path_straightness()
         if ind0 is not None:
             rc, ang = self.covmap.add_scan(self.agent.xy_hist[ind0],
-                                        self.agent.xy_hist[-2])
+                                           self.agent.xy_hist[-2])
             # check contact detections
             obs_str = self.contacts.add_dets(rc, ang)
             self.logger.addcovmap(self.covmap.map_stack[-1])
@@ -308,9 +317,19 @@ class SurveySimulationGrid():
 
         if hasattr(self,'plotter'):
             self.updateplots()
-        
-        ag_pos, occ_map, cov_map, cts = self.get_gridded_obs()
-        
+
+        (ag_pos, 
+         occ_map, 
+         cov_map, 
+         cts) = self.get_gridded_obs(self.agent.xy,
+                                     cov_map=self.covmap.map_stack,
+                                     contacts=self.contacts.detections)
+        if hasattr(self, 'agent_viz'):
+            self.agent_viz.update(ag_pos,
+                                occ_map,
+                                cov_map,
+                                cts)
+
         self.check_termination()
 
         return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
@@ -322,11 +341,24 @@ class SurveySimulationGrid():
         self.plotter.updatetime(t, t)
         self.plotter.agent.updateagent(bp)
         self.plotter.agent.updatetrackhist(ah)
-        self.plotter.agent.updatetarget(ip,ip)
+        self.plotter.agent.updatetarget(ip, ip)
         self.plotter.updatecovmap(cm)
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)
         self.plotter.draw()
+
+        if hasattr(self, 'agent_viz'):
+            cm_arr = [np.array(c_tmp) for c_tmp in cm]
+            (ag_pos, 
+             occ_map, 
+             cov_map, 
+             cts) = self.get_gridded_obs(bp,
+                                         cm_arr,
+                                         cn)
+            self.agent_viz.update(ag_pos,
+                                  occ_map,
+                                  cov_map,
+                                  cts)
 
     def add_group(self, c_inds):
         # Add the contacts to a cluster and add to log
