@@ -72,7 +72,7 @@ class BasicEnv(gym.Env):
             occ_map_shape = self.survey_simulation.map_obj.occ.shape
             cov_map_shape = occ_map_shape #coverage map is the same shape as the occupancy map
             #concatenate the occupancy map and coverage map to get the observation space in to get a 3d observation space
-            obs_shape = (2, *occ_map_shape)
+            obs_shape = (3, *occ_map_shape)
             
             self.observation_space = spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float64)
 
@@ -124,9 +124,8 @@ class BasicEnv(gym.Env):
             observation = np.array([t / self.survey_simulation.timer.time_lim])
         if self.obs_type == 'coverage_occupancy':
             #stack in new axis
-            print (occ_map.shape, 'occ_map')
-            print (cov_map.shape, 'cov_map')
-            observation = np.stack([occ_map, cov_map], axis=0)
+  
+            observation = np.stack([occ_map, cov_map,agent_pos ], axis=0)
 
 
         return observation
@@ -172,28 +171,28 @@ class BasicEnv(gym.Env):
 #test the environment
 
 
-# kwargs = {
-#     'save_logs':False,
-#     'obs_type':'coverage_occupancy'
-# }
-
-
 kwargs = {
-    'save_logs':False,
-    'obs_type':'time_only'
+    'save_logs':True,
+    'obs_type':'coverage_occupancy'
 }
 
-env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt',**kwargs)
-print(env.observation_space)
-print(env.action_space)
 
-obs = env.reset(seed=0,options={})
-print(obs)
+# kwargs = {
+#     'save_logs':True,
+#     'obs_type':'time_only'
+# }
+
+env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt',**kwargs)
+# print(env.observation_space)
+# print(env.action_space)
+
+# obs = env.reset(seed=0,options={})
+# print(obs)
 
 
 # action = 1
 
-# for i in range(100):
+# for i in range(1000):
 #     # action = env.action_space.sample()
 
 #     obs, reward, terminated, truncated, info = env.step(action)
@@ -218,29 +217,29 @@ print(obs)
 
 
 
-# model = PPO("MlpPolicy", env, verbose = 1, n_steps=5000, n_epochs=2)
-
-model_path = 'ppo_survey_simulation_test_2.zip'
-model = PPO.load(model_path, env=env, verbose = 1)
-model.learn(total_timesteps=1e6)
-model.save("ppo_survey_simulation_test_3")
-
-
-
-# model_path = 'ppo_survey_simulation_test_3.zip'
-# model = PPO.load(model_path)
-
-# obs , info = env.reset(seed=0,options={})
-# print   (obs)
+# # model = PPO("MlpPolicy", env, verbose = 1, n_steps=5000, n_epochs=2)
+# model = PPO("CnnPolicy", env, verbose = 1, n_steps=5000, n_epochs=2, policy_kwargs={'normalize_images':False})
+# # model_path = 'ppo_survey_simulation_test_2.zip'
+# # model = PPO.load(model_path, env=env, verbose = 1)
+# model.learn(total_timesteps=1e6)
+# model.save("ppo_survey_simulation_test_1_cov")
 
 
-# for i in range(1000):
-#     action  = model.predict(obs)
-#     print (action)
-#     obs, reward, terminated, truncated, info = env.step(action[0])
-#     env.render()
 
-#     if terminated:
-#         obs, info = env.reset(seed=0,options={})
-#         print('resetting')
+model_path = 'ppo_survey_simulation_test_1_cov'
+model = PPO.load(model_path)
+
+obs , info = env.reset(seed=0,options={})
+print   (obs)
+
+
+for i in range(1000):
+    action  = model.predict(obs)
+    print (action)
+    obs, reward, terminated, truncated, info = env.step(action[0])
+    env.render()
+
+    if terminated:
+        obs, info = env.reset(seed=0,options={})
+        print('resetting')
 

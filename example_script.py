@@ -1,5 +1,5 @@
-from survey_simulation import SurveySimulationGrid
 import numpy as np
+from survey_simulation import SurveySimulationGrid
 
 # # Running manual mode
 # ss = SurveySimulationGrid('manual')
@@ -20,5 +20,5 @@ import numpy as np
 # Running playback
 ss = SurveySimulationGrid('playback', 
                             save_dir='data/',
-                            ep_n=165
+                            ep_n=174
                             )
