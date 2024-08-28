@@ -30,13 +30,14 @@ if __name__ == "__main__":
             'save_logs': False,
             'obs_type': 'coverage_occupancy'
         }
-    env = make_vec_env(config['env_name'], n_envs=4, env_kwargs=env_kwargs)
+    env = make_vec_env(config['env_name'], n_envs=8, env_kwargs=env_kwargs)
     env = VecMonitor(env)
 
 
     kwargs = {
-        'n_steps': 1000,
-        'n_epochs': 2, 
+        'n_steps': 500,
+        'n_epochs': 4, 
+        'batch_size': 500,
     }
 
     policy_kwargs = {
