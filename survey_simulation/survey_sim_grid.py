@@ -310,32 +310,32 @@ class SurveySimulationGrid():
         self.plotter.draw()
 
     def next_step(self):
+        if not self.end_episode:
+            self.timer.update_time(self.timer.t_step)
+            if self.agent.speed>0:
+                self.agent.advance_one_step(self.timer.t_step)
+                self.logger.addmove(self.agent.xy)
 
-        self.timer.update_time(self.timer.t_step)
-        if self.agent.speed>0:
-            self.agent.advance_one_step(self.timer.t_step)
-            self.logger.addmove(self.agent.xy)
-
-        # check if path is still straight and if not, 
-        # compute the previous coverage and contacts
-        ind0 = self.agent.check_path_straightness()
-        if ind0 is not None:
-            rc, ang = self.covmap.add_scan(self.agent.xy_hist[ind0],
-                                           self.agent.xy_hist[-2])
-            # check contact detections
-            obs_str = self.contacts.add_dets(rc, ang)
-            self.logger.addcovmap(self.covmap.map_stack[-1])
-            self.logger.addobservation(obs_str, self.timer.time_remaining)
+            # check if path is still straight and if not, 
+            # compute the previous coverage and contacts
+            ind0 = self.agent.check_path_straightness()
+            if ind0 is not None:
+                rc, ang = self.covmap.add_scan(self.agent.xy_hist[ind0],
+                                            self.agent.xy_hist[-2])
+                # check contact detections
+                obs_str = self.contacts.add_dets(rc, ang)
+                self.logger.addcovmap(self.covmap.map_stack[-1])
+                self.logger.addobservation(obs_str, self.timer.time_remaining)
 
         if hasattr(self,'plotter'):
             self.updateplots()
 
         (ag_pos, 
-         occ_map, 
-         cov_map, 
-         cts) = self.get_gridded_obs(self.agent.xy,
-                                     cov_map=self.covmap.map_stack,
-                                     contacts=self.contacts.detections)
+        occ_map, 
+        cov_map, 
+        cts) = self.get_gridded_obs(self.agent.xy,
+                                    cov_map=self.covmap.map_stack,
+                                    contacts=self.contacts.detections)
         if hasattr(self, 'agent_viz'):
             self.agent_viz.update(ag_pos,
                                 occ_map,
