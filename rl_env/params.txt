@@ -3,8 +3,8 @@ rt: 0
 play_speed: 1
 t_step: 1
 grid_spacing: 1
-plotter: 1
-agent_viz: 1
+plotter: 0
+agent_viz: 0
 
 # Agent properties
 random_start: 2
@@ -17,7 +17,7 @@ agent_speed: 5.
 scan_thr: 2
 
 # Map properties
-map_n: 2
+#map_n: 2
 map_path: "/Users/edwardclark/Documents/SURREY/survey-simulation/maps/Map2.png"
 scan_area_lims: (0, 200, 0, 120)
 map_area_lims: (0, 200, 0, 120) 

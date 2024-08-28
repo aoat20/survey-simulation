@@ -2,7 +2,7 @@ import gymnasium as gym
 import rl_env  # This will automatically register your custom environment
 
 
-def run_environment(env_id, **kwargs):
+def run_environment(env_id, steps = None,  **kwargs):
     """
     Runs a specified Gymnasium environment with given keyword arguments.
 
@@ -22,18 +22,34 @@ def run_environment(env_id, **kwargs):
     done = False
     total_reward = 0
     
-    while not done:
-        # Sample a random action from the environment's action space
-        action = env.action_space.sample()
-        
-        # Take a step in the environment
-        observation, reward, terminated, truncated, info  = env.step(action)
-        
-        total_reward += reward
-        
-        # Print the current step's information
-        print (f"Observation: {observation}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
-    
+    # Run the environment for the specified number of steps if not None otherwise run until done
+
+    if steps is not None:
+        for _ in range(steps):
+            # Sample a random action from the environment's action space
+            action = env.action_space.sample()
+            
+            # Take a step in the environment
+            observation, reward, terminated, truncated, info  = env.step(action)
+            
+            total_reward += reward
+            print (reward)
+            # Print the current step's information
+            # print (f"Observation: {observation}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
+    else:
+        while not done:
+            # Sample a random action from the environment's action space
+            action = env.action_space.sample()
+            
+            # Take a step in the environment
+            observation, reward, terminated, truncated, info  = env.step(action)
+            
+            total_reward += reward
+            print (reward)
+            
+            # Print the current step's information
+            # print (f"Observation: {observation}, Reward: {reward}, Terminated: {terminated}, Truncated: {truncated}")
+
     print(f"Total Reward: {total_reward}")
 
 if __name__ == "__main__":

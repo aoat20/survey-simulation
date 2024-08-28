@@ -65,7 +65,7 @@ class BasicEnv(gym.Env):
         #this should match the observation space of the simulation
         #next step returns a tuple (t, agent_pos, occ_map, cov_map, cts)
         if self.obs_type == 'time_only':
-            self.observation_space = spaces.Box(low=0, high=1, shape=(1,), dtype=np.float64) #for now just return the time step
+            self.observation_space = spaces.Box(low=0, high=1, shape=(1,), dtype=np.float32) #for now just return the time step
 
         if self.obs_type == 'coverage_occupancy':
             #get the occupancy map and coverage map shape
@@ -74,7 +74,7 @@ class BasicEnv(gym.Env):
             #concatenate the occupancy map and coverage map to get the observation space in to get a 3d observation space
             obs_shape = (3, *occ_map_shape)
             
-            self.observation_space = spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float64)
+            self.observation_space = spaces.Box(low=0, high=1, shape=obs_shape, dtype=np.float32)
 
 
     def step(self, action):
@@ -125,7 +125,7 @@ class BasicEnv(gym.Env):
         if self.obs_type == 'coverage_occupancy':
             #stack in new axis
   
-            observation = np.stack([occ_map, cov_map,agent_pos ], axis=0)
+            observation = np.stack([occ_map, cov_map,agent_pos ], axis=0, dtype=np.float32)
 
 
         return observation
@@ -168,13 +168,6 @@ class BasicEnv(gym.Env):
 
 
 
-#test the environment
-
-
-kwargs = {
-    'save_logs':False,
-    'obs_type':'coverage_occupancy'
-}
 
 
 # kwargs = {
