@@ -24,7 +24,7 @@ class BasicEnv(gym.Env):
 
 
 
-    def __init__(self,params_filepath, **kwargs) -> gym.Env:
+    def __init__(self,**kwargs) -> gym.Env:
 
         default_config = {}
         self.config = default_config
@@ -32,6 +32,9 @@ class BasicEnv(gym.Env):
 
         implemented_obs = ['time_only', 'coverage_occupancy']
 
+        params_filepath = kwargs.get('params_filepath', None)
+        if params_filepath is None:
+            raise ValueError('params_filepath must be provided')
 
         self.survey_simulation = SurveySimulationGrid('test',
                                                       save_dir='data',
@@ -179,7 +182,7 @@ kwargs = {
 #     'obs_type':'time_only'
 # }
 
-env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt',**kwargs)
+# env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt',**kwargs)
 # print(env.observation_space)
 # print(env.action_space)
 
@@ -214,12 +217,12 @@ env = BasicEnv('/Users/edwardclark/Documents/SURREY/survey-simulation/params.txt
 
 
 
-# # model = PPO("MlpPolicy", env, verbose = 1, n_steps=5000, n_epochs=2)
-model = PPO("CnnPolicy", env, verbose = 1, n_steps=5000, n_epochs=2, policy_kwargs={'normalize_images':False})
-# # model_path = 'ppo_survey_simulation_test_2.zip'
-# # model = PPO.load(model_path, env=env, verbose = 1)
-model.learn(total_timesteps=1e6)
-model.save("ppo_survey_simulation_test_2_cov")
+# # # model = PPO("MlpPolicy", env, verbose = 1, n_steps=5000, n_epochs=2)
+# model = PPO("CnnPolicy", env, verbose = 1, n_steps=5000, n_epochs=2, policy_kwargs={'normalize_images':False})
+# # # model_path = 'ppo_survey_simulation_test_2.zip'
+# # # model = PPO.load(model_path, env=env, verbose = 1)
+# model.learn(total_timesteps=1e6)
+# model.save("ppo_survey_simulation_test_2_cov")
 
 
 

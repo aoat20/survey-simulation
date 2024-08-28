@@ -1,5 +1,5 @@
 import gymnasium as gym
-import rl_env  # This will automatically register your custom environment
+import rl-env  # This will automatically register your custom environment
 
 
 def run_environment(env_id, **kwargs):
@@ -40,7 +40,6 @@ if __name__ == "__main__":
     # Specify the environment ID and any kwargs
     environment_id = 'BasicEnv-v0'
     kwargs = {
-        'params_filepath': '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/params.txt',
         'save_logs': False,
         'obs_type': 'coverage_occupancy'
     }

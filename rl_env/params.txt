@@ -18,7 +18,7 @@ scan_thr: 2
 
 # Map properties
 map_n: 2
-#map_path: "maps/Map1.png"
+map_path: "/Users/edwardclark/Documents/SURREY/survey-simulation/maps/Map2.png"
 scan_area_lims: (0, 200, 0, 120)
 map_area_lims: (0, 200, 0, 120) 
 
