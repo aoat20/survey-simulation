@@ -67,8 +67,8 @@ class CoverageMap:
                                     y2 - self.scan_area[2])
 
         # Compute scan angle
-        ang_L_deg = np.rad2deg(cov_temp[4]+np.pi/2)
-        ang_R_deg = np.rad2deg(cov_temp[4]-np.pi/2)
+        ang_L_deg = np.rad2deg(cov_temp[4]-np.pi/2+np.pi/2)
+        ang_R_deg = np.rad2deg(cov_temp[4]-np.pi/2-np.pi/2)
         # round to 0.1degrees
         ang_L = 0.1 * round(ang_L_deg/0.1)
         ang_R = 0.1 * round(ang_R_deg/0.1)
@@ -151,7 +151,6 @@ class CoverageMap:
                      map_xy) -> np.array:
         width, height = map_xy
         mask = np.zeros((height, width))
-        mask2 = np.zeros((height, width))
 
         min_x = min(rectangle_corners[0][0], 
                     rectangle_corners[1][0],

@@ -51,6 +51,8 @@ class SurveySimulationGrid():
             print("%s = %s" % (key, value))
             params[key] = value
 
+        self.msa = params['min_scan_angle_diff']
+
         # Set random seed if required for debugging purposes
         if mode == "manual" or mode == 'test':
             if 'rand_seed' in params.keys():
@@ -228,7 +230,17 @@ class SurveySimulationGrid():
             cov_map_grid[sa[2]:sa[3],
                          sa[0]:sa[1]] = np.count_nonzero(~np.isnan(cov_map),
                                                          axis=0)
-        cov_map_grid = np.flip(cov_map_grid, 0)
+        cov_map_grid = [np.flip(cov_map_grid, 0)]
+
+        bins = np.arange(0, 360, self.msa)
+        cm_tmp = np.array(cov_map)
+
+        for b in bins:
+            b1 = (b - self.msa/2) % 360
+            b2 = (b + self.msa/2) % 360
+
+            cov_map_grid.append(np.count_nonzero(((cm_tmp-b1) % 360 
+                                                  < (b2 - b1) % 360), axis=0))
 
         # Contacts
         cts_grid = np.zeros((self.map_obj.map_lims[3],
@@ -327,12 +339,12 @@ class SurveySimulationGrid():
         if hasattr(self, 'agent_viz'):
             self.agent_viz.update(ag_pos,
                                 occ_map,
-                                cov_map,
+                                cov_map[0],
                                 cts)
 
         self.check_termination()
 
-        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
+        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts 
         
     def next_step_pb(self):
         t, bp, ip, cm, cn, N_g, ah = self.playback.get_data(self.action_id)
@@ -357,7 +369,7 @@ class SurveySimulationGrid():
                                          cn)
             self.agent_viz.update(ag_pos,
                                   occ_map,
-                                  cov_map,
+                                  cov_map[0],
                                   cts)
 
     def add_group(self, c_inds):
