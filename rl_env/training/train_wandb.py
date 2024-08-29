@@ -8,9 +8,12 @@ import wandb
 
 if __name__ == "__main__":
 
+
+    N_ENVS = 4
+
     config = {
         "policy_type": "CnnPolicy",
-        "total_timesteps": 1e6,
+        "total_timesteps": 1e7,
         "env_name": "BasicEnv-v0",
     }
     run = wandb.init(
@@ -30,14 +33,14 @@ if __name__ == "__main__":
             'save_logs': False,
             'obs_type': 'coverage_occupancy'
         }
-    env = make_vec_env(config['env_name'], n_envs=8, env_kwargs=env_kwargs)
+    env = make_vec_env(config['env_name'], n_envs=N_ENVS, env_kwargs=env_kwargs)
     env = VecMonitor(env)
 
 
     kwargs = {
-        'n_steps': 500,
+        'n_steps': 1000,
         'n_epochs': 4, 
-        'batch_size': 500,
+        'batch_size': 1000,
     }
 
     policy_kwargs = {
@@ -50,7 +53,7 @@ if __name__ == "__main__":
     model.learn(total_timesteps=config['total_timesteps'],
             callback=WandbCallback(
             gradient_save_freq=10000,
-            model_save_freq=100000,
+            model_save_freq=int(100000/N_ENVS),
             model_save_path=f"models/{run.id}",
             verbose=2,
         ))
