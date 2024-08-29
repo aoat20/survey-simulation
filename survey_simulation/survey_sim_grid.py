@@ -136,8 +136,8 @@ class SurveySimulationGrid():
                                          min_scan_ang=params['min_scan_angle_diff'],
                                          n_angles=params['N_angles'],
                                          n_looks=params['N_looks'])
-            self.plotter.show(blocking=False)
-            self.plotter.draw()
+            # self.plotter.show(blocking=False)
+            # self.plotter.draw()
 
         # Set up event handlers
         if mode == "manual":
@@ -296,19 +296,6 @@ class SurveySimulationGrid():
         elif action_type == 'ungroup':
             self.remove_group(action)
 
-    def updateplots(self):
-        # plotting
-        if self.covmap.map_stack:
-            self.plotter.updatecovmap(self.covmap.map_stack)
-        self.plotter.updatecontacts(self.contacts.detections)
-        self.plotter.agent.updateagent(self.agent.xy)
-        if len(self.agent.xy_hist) > 1:
-            self.plotter.agent.updatetrackhist(self.agent.xy_hist)
-        self.plotter.updatetime(self.timer.time_remaining,
-                                self.timer.time_remaining)
-        # self.plotter.remove_temp()
-        self.plotter.draw()
-
     def next_step(self):
         if not self.end_episode:
             self.timer.update_time(self.timer.t_step)
@@ -328,7 +315,11 @@ class SurveySimulationGrid():
                 self.logger.addobservation(obs_str, self.timer.time_remaining)
 
         if hasattr(self,'plotter'):
-            self.updateplots()
+            self.plotter.update_plots(self.covmap.map_stack,
+                                      self.contacts.detections,
+                                      self.agent.xy,
+                                      self.agent.xy_hist,
+                                      self.timer.time_remaining)
 
         (ag_pos, 
         occ_map, 
@@ -351,9 +342,9 @@ class SurveySimulationGrid():
         grps = []
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
         self.plotter.updatetime(t, t)
-        self.plotter.agent.updateagent(bp)
-        self.plotter.agent.updatetrackhist(ah)
-        self.plotter.agent.updatetarget(ip, ip)
+        self.plotter.agent_plt.updateagent(bp)
+        self.plotter.agent_plt.updatetrackhist(ah)
+        self.plotter.agent_plt.updatetarget(ip, ip)
         self.plotter.updatecovmap(cm)
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)
@@ -446,7 +437,6 @@ class SurveySimulationGrid():
                                      self.covmap.scan_width)
             self.plotter.updatetime(self.timer.time_remaining,
                                     self.timer.time_temp)
-            # self.plotter.fig.canvas.draw_idle()
 
     def on_key_manual(self, event):
         # normal operation if episode is ongoing
@@ -477,8 +467,6 @@ class SurveySimulationGrid():
         # can reset at any time
         if event.key == 'enter':
             self.reset()
-
-        self.plotter.fig.canvas.draw_idle()
 
     def on_key_playback(self, event):
         if event.key == 'left':
@@ -520,7 +508,6 @@ class SurveySimulationGrid():
                     self.plotter.p.set_facecolor((1, 1, 1))
             else: 
                 self.plotter.p.set_facecolor((1, 1, 1))
-            self.plotter.fig.canvas.draw_idle()
 
     def on_pick(self, event):
         if not self.end_episode and not self.groupswitch:
@@ -541,7 +528,6 @@ class SurveySimulationGrid():
                 self.plotter.updategroups(self.contacts.det_grp)
                 # log ungrouped
                 self.logger.ungroup(g_inds)
-            self.plotter.fig.canvas.draw_idle()
 
 if __name__ == '__main__':
     ss = SurveySimulationGrid('manual',

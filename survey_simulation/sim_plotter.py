@@ -366,7 +366,8 @@ class SurveyPlotter(Plotter):
         # setup things
         self.setup_plot(self.ml)
         self.setup_map(self.mi)
-        self.agent = self.AgentPlot(ax = self.ax,
+
+        self.agent_plt = self.AgentPlot(ax = self.ax,
                                     xy0 = self.xy0)
         self.setup_contacts()
         self.setup_covmap(self.sl, 
@@ -379,8 +380,26 @@ class SurveyPlotter(Plotter):
         self.updatetime(self.tl, self.tl)
         self.draw()
     
+    def update_plots(self,
+                     map_stack,
+                     detections,
+                     agent_xy,
+                     agent_xy_hist, 
+                     time_remaining):
+        # plotting
+        if map_stack:
+            self.updatecovmap(map_stack)
+        self.updatecontacts(detections)
+        self.agent_plt.updateagent(agent_xy)
+        if len(agent_xy_hist) > 1:
+            self.agent_plt.updatetrackhist(agent_xy_hist)
+        self.updatetime(time_remaining,
+                        time_remaining)
+        # self.plotter.remove_temp()
+        self.draw()
+
     def reset(self):
-        self.agent.updateagent(self.xy0)
+        self.agent_plt.updateagent(self.xy0)
         self.agent.track_hist_plt.set_data((self.xy0[0],
                                             self.xy0[1]))
 
