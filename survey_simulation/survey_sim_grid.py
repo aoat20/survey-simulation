@@ -51,6 +51,8 @@ class SurveySimulationGrid():
             print("%s = %s" % (key, value))
             params[key] = value
 
+        self.msa = params['min_scan_angle_diff']
+
         # Set random seed if required for debugging purposes
         if mode == "manual" or mode == 'test':
             if 'rand_seed' in params.keys():
@@ -134,8 +136,8 @@ class SurveySimulationGrid():
                                          min_scan_ang=params['min_scan_angle_diff'],
                                          n_angles=params['N_angles'],
                                          n_looks=params['N_looks'])
-            self.plotter.show(blocking=False)
-            self.plotter.draw()
+            # self.plotter.show(blocking=False)
+            # self.plotter.draw()
 
         # Set up event handlers
         if mode == "manual":
@@ -228,7 +230,17 @@ class SurveySimulationGrid():
             cov_map_grid[sa[2]:sa[3],
                          sa[0]:sa[1]] = np.count_nonzero(~np.isnan(cov_map),
                                                          axis=0)
-        cov_map_grid = np.flip(cov_map_grid, 0)
+        cov_map_grid = [np.flip(cov_map_grid, 0)]
+
+        bins = np.arange(0, 360, self.msa)
+        cm_tmp = np.array(cov_map)
+
+        for b in bins:
+            b1 = (b - self.msa/2) % 360
+            b2 = (b + self.msa/2) % 360
+
+            cov_map_grid.append(np.count_nonzero(((cm_tmp-b1) % 360 
+                                                  < (b2 - b1) % 360), axis=0))
 
         # Contacts
         cts_grid = np.zeros((self.map_obj.map_lims[3],
@@ -284,64 +296,55 @@ class SurveySimulationGrid():
         elif action_type == 'ungroup':
             self.remove_group(action)
 
-    def updateplots(self):
-        # plotting
-        if self.covmap.map_stack:
-            self.plotter.updatecovmap(self.covmap.map_stack)
-        self.plotter.updatecontacts(self.contacts.detections)
-        self.plotter.agent.updateagent(self.agent.xy)
-        if len(self.agent.xy_hist) > 1:
-            self.plotter.agent.updatetrackhist(self.agent.xy_hist)
-        self.plotter.updatetime(self.timer.time_remaining,
-                                self.timer.time_remaining)
-        # self.plotter.remove_temp()
-        self.plotter.draw()
-
     def next_step(self):
+        if not self.end_episode:
+            self.timer.update_time(self.timer.t_step)
+            if self.agent.speed>0:
+                self.agent.advance_one_step(self.timer.t_step)
+                self.logger.addmove(self.agent.xy)
 
-        self.timer.update_time(self.timer.t_step)
-        if self.agent.speed>0:
-            self.agent.advance_one_step(self.timer.t_step)
-            self.logger.addmove(self.agent.xy)
-
-        # check if path is still straight and if not, 
-        # compute the previous coverage and contacts
-        ind0 = self.agent.check_path_straightness()
-        if ind0 is not None:
-            rc, ang = self.covmap.add_scan(self.agent.xy_hist[ind0],
-                                           self.agent.xy_hist[-2])
-            # check contact detections
-            obs_str = self.contacts.add_dets(rc, ang)
-            self.logger.addcovmap(self.covmap.map_stack[-1])
-            self.logger.addobservation(obs_str, self.timer.time_remaining)
+            # check if path is still straight and if not, 
+            # compute the previous coverage and contacts
+            ind0 = self.agent.check_path_straightness()
+            if ind0 is not None:
+                rc, ang = self.covmap.add_scan(self.agent.xy_hist[ind0],
+                                            self.agent.xy_hist[-2])
+                # check contact detections
+                obs_str = self.contacts.add_dets(rc, ang)
+                self.logger.addcovmap(self.covmap.map_stack[-1])
+                self.logger.addobservation(obs_str, self.timer.time_remaining)
 
         if hasattr(self,'plotter'):
-            self.updateplots()
+            self.plotter.update_plots(self.covmap.map_stack,
+                                      self.contacts.detections,
+                                      self.agent.xy,
+                                      self.agent.xy_hist,
+                                      self.timer.time_remaining)
 
         (ag_pos, 
-         occ_map, 
-         cov_map, 
-         cts) = self.get_gridded_obs(self.agent.xy,
-                                     cov_map=self.covmap.map_stack,
-                                     contacts=self.contacts.detections)
+        occ_map, 
+        cov_map, 
+        cts) = self.get_gridded_obs(self.agent.xy,
+                                    cov_map=self.covmap.map_stack,
+                                    contacts=self.contacts.detections)
         if hasattr(self, 'agent_viz'):
             self.agent_viz.update(ag_pos,
                                 occ_map,
-                                cov_map,
+                                cov_map[0],
                                 cts)
 
         self.check_termination()
 
-        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
+        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts 
         
     def next_step_pb(self):
         t, bp, ip, cm, cn, N_g, ah = self.playback.get_data(self.action_id)
         grps = []
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
         self.plotter.updatetime(t, t)
-        self.plotter.agent.updateagent(bp)
-        self.plotter.agent.updatetrackhist(ah)
-        self.plotter.agent.updatetarget(ip, ip)
+        self.plotter.agent_plt.updateagent(bp)
+        self.plotter.agent_plt.updatetrackhist(ah)
+        self.plotter.agent_plt.updatetarget(ip, ip)
         self.plotter.updatecovmap(cm)
         self.plotter.updatecontacts(cn)
         self.plotter.updategroups(grps)
@@ -357,7 +360,7 @@ class SurveySimulationGrid():
                                          cn)
             self.agent_viz.update(ag_pos,
                                   occ_map,
-                                  cov_map,
+                                  cov_map[0],
                                   cts)
 
     def add_group(self, c_inds):
@@ -434,7 +437,6 @@ class SurveySimulationGrid():
                                      self.covmap.scan_width)
             self.plotter.updatetime(self.timer.time_remaining,
                                     self.timer.time_temp)
-            # self.plotter.fig.canvas.draw_idle()
 
     def on_key_manual(self, event):
         # normal operation if episode is ongoing
@@ -465,8 +467,6 @@ class SurveySimulationGrid():
         # can reset at any time
         if event.key == 'enter':
             self.reset()
-
-        self.plotter.fig.canvas.draw_idle()
 
     def on_key_playback(self, event):
         if event.key == 'left':
@@ -508,7 +508,6 @@ class SurveySimulationGrid():
                     self.plotter.p.set_facecolor((1, 1, 1))
             else: 
                 self.plotter.p.set_facecolor((1, 1, 1))
-            self.plotter.fig.canvas.draw_idle()
 
     def on_pick(self, event):
         if not self.end_episode and not self.groupswitch:
@@ -529,7 +528,6 @@ class SurveySimulationGrid():
                 self.plotter.updategroups(self.contacts.det_grp)
                 # log ungrouped
                 self.logger.ungroup(g_inds)
-            self.plotter.fig.canvas.draw_idle()
 
 if __name__ == '__main__':
     ss = SurveySimulationGrid('manual',
