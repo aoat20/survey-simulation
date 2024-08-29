@@ -307,12 +307,14 @@ class SurveySimulationGrid():
             # compute the previous coverage and contacts
             ind0 = self.agent.check_path_straightness()
             if ind0 is not None:
-                rc, ang = self.covmap.add_scan(self.agent.xy_hist[ind0],
+                rc, ang, success = self.covmap.add_scan(self.agent.xy_hist[ind0],
                                             self.agent.xy_hist[-2])
                 # check contact detections
-                obs_str = self.contacts.add_dets(rc, ang)
-                self.logger.addcovmap(self.covmap.map_stack[-1])
-                self.logger.addobservation(obs_str, self.timer.time_remaining)
+                if success:
+                    obs_str = self.contacts.add_dets(rc, ang)
+                    self.logger.addcovmap(self.covmap.map_stack[-1])
+                    self.logger.addobservation(obs_str, 
+                                               self.timer.time_remaining)
 
         if hasattr(self,'plotter'):
             self.plotter.update_plots(self.covmap.map_stack,

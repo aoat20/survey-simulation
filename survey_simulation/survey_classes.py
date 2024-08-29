@@ -86,11 +86,14 @@ class CoverageMap:
         # add to the stack of orientations
         if len(np.unique(cm))>1:
             self.map_stack.append(cm)
+            success = 1
+        else:
+            success = 0
         
         # output the corners and the scan angles
         rect_corners = [cov_temp[2], cov_temp[3]]
 
-        return rect_corners, angs
+        return rect_corners, angs, success
 
     def pixelrect(self, x1, x2, y1, y2):
         # compute length and rotation of rectangle
