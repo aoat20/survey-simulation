@@ -84,7 +84,9 @@ class CoverageMap:
         cm[cR_temp == 1] = ang_R
 
         # add to the stack of orientations
-        self.map_stack.append(cm)
+        if len(np.unique(cm))>1:
+            self.map_stack.append(cm)
+        
         # output the corners and the scan angles
         rect_corners = [cov_temp[2], cov_temp[3]]
 
