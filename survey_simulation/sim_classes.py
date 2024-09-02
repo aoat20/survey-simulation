@@ -318,12 +318,12 @@ class Logger:
         self.cov = []
         self.aux_info = []
         # add initial conditions
-        self.addcovmap(np.ones((scan_lims[3]-scan_lims[2],
+        self.add_covmap(np.ones((scan_lims[3]-scan_lims[2],
                                 scan_lims[1]-scan_lims[0]))*np.nan)
-        self.addmove(agent_start)
-        self.addtruth(gnd_trth)
-        self.addobservation([], time_lim)
-        self.addmeta(params)
+        self.add_move(agent_start)
+        self.add_truth(gnd_trth)
+        self.add_observation([], time_lim)
+        self.add_meta(params)
 
     def add_move(self, xy):
         x, y = xy[0], xy[1]
@@ -468,11 +468,11 @@ class Logger:
         self.truth = []
         self.cov = []
         # add initial conditions
-        self.addcovmap(np.ones((scan_lims[3]-scan_lims[2],
+        self.add_covmap(np.ones((scan_lims[3]-scan_lims[2],
                                 scan_lims[1]-scan_lims[0]))*np.nan)
-        self.addmove(agent_start)
-        self.addtruth(new_contactstrth)
-        self.addobservation([], time_lim)
+        self.add_move(agent_start)
+        self.add_truth(new_contactstrth)
+        self.add_observation([], time_lim)
 
 class Map:
     
