@@ -410,8 +410,8 @@ class Logger:
                 val = str(params[s])
             self.metadata.append('\n'+': '.join([s, val]))
 
-    def add_auxinfo(self, aux_info):
-        pass
+    def add_auxinfo(self, new_aux_info):
+        self.aux_info.append(new_aux_info + '\n')
 
     def save_data(self, ep_ID):
 
@@ -435,25 +435,33 @@ class Logger:
         
         # Make the new directory
         os.makedirs(os.path.join(fold_dir, 'COVERAGE'))
+
         # Write actions
         self.actions.append(" ".join([str(self.action_id),
                                         "end "
                                         '\n']))
         f_act = open(os.path.join(fold_dir, ep_str+'_ACTIONS'), 'w')
         f_act.writelines(self.actions)
+
         # write observations
         f_obs = open(os.path.join(fold_dir, ep_str+'_OBSERVATIONS'), 'w')
         f_obs.writelines(self.observations)
+
         # write ground truth and metadata
         f_truth = open(os.path.join(fold_dir, ep_str+'_TRUTH'), 'w')
         f_truth.writelines(self.truth)
         f_meta = open(os.path.join(fold_dir, ep_str+'_META'), 'w')
         f_meta.writelines(self.metadata)
+
         # output coverage matrices
         for n in range(len(self.cov)):
             np.savetxt(os.path.join(fold_dir, 'COVERAGE',
                                     ep_str+"_"+str(self.action_id_cov[n])+"_COVERAGE"),
                         self.cov[n])
+
+        # save auxiliary information
+        f_aux = open(os.path.join(fold_dir, ep_str+'_AUX'), 'w')
+        f_aux.writelines(self.aux_info)
 
     def reset(self, 
               agent_start, 

@@ -376,6 +376,9 @@ class SurveySimulationGrid():
         self.contacts.remove_group(g_inds)
         self.logger.ungroup(g_inds)
 
+    def add_aux_info(self, aux_info):
+        self.logger.add_auxinfo(aux_info)
+
     def round_to_angle(self, x0, y0, x1, y1):
         ang_r = 10
         r_r = 1
