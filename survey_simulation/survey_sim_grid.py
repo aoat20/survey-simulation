@@ -301,7 +301,7 @@ class SurveySimulationGrid():
             self.timer.update_time(self.timer.t_step)
             if self.agent.speed>0:
                 self.agent.advance_one_step(self.timer.t_step)
-                self.logger.addmove(self.agent.xy)
+                self.logger.add_move(self.agent.xy)
 
             # check if path is still straight and if not, 
             # compute the previous coverage and contacts
@@ -312,8 +312,8 @@ class SurveySimulationGrid():
                 # check contact detections
                 if success:
                     obs_str = self.contacts.add_dets(rc, ang)
-                    self.logger.addcovmap(self.covmap.map_stack[-1])
-                    self.logger.addobservation(obs_str, 
+                    self.logger.add_covmap(self.covmap.map_stack[-1])
+                    self.logger.add_observation(obs_str, 
                                                self.timer.time_remaining)
 
         if hasattr(self,'plotter'):
@@ -369,7 +369,7 @@ class SurveySimulationGrid():
         # Add the contacts to a cluster and add to log
         self.contacts.dets_to_clus(c_inds)
         g_n, c_inds = self.contacts.add_group()
-        self.logger.addgroup(g_n, c_inds)
+        self.logger.add_group(g_n, c_inds)
 
     def remove_group(self, g_inds):
         # Get rid of a group
@@ -457,7 +457,7 @@ class SurveySimulationGrid():
                     # update plot
                     self.plotter.updategroups(self.contacts.det_grp)
                     # log new grouping
-                    self.logger.addgroup(g_n, c_inds)
+                    self.logger.add_group(g_n, c_inds)
             elif event.key == '#':
                 self.terminate_episode()
             elif event.key == '=':

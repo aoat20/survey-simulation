@@ -316,6 +316,7 @@ class Logger:
         self.observations = []
         self.truth = []
         self.cov = []
+        self.aux_info = []
         # add initial conditions
         self.addcovmap(np.ones((scan_lims[3]-scan_lims[2],
                                 scan_lims[1]-scan_lims[0]))*np.nan)
@@ -324,7 +325,7 @@ class Logger:
         self.addobservation([], time_lim)
         self.addmeta(params)
 
-    def addmove(self, xy):
+    def add_move(self, xy):
         x, y = xy[0], xy[1]
         self.actions.append(" ".join([str(self.action_id),
                                         "move",
@@ -333,11 +334,11 @@ class Logger:
                                         '\n']))
         self.action_id += 1
 
-    def addcovmap(self, cov_map):
+    def add_covmap(self, cov_map):
         self.action_id_cov.append(self.action_id)
         self.cov.append(cov_map)
 
-    def addgroup(self, group_n, c_ind):
+    def add_group(self, group_n, c_ind):
         c_ind.sort()
         c_str = " ".join([str(n) for n in c_ind])
         self.actions.append(" ".join([str(self.action_id),
@@ -355,14 +356,14 @@ class Logger:
                                         '\n']))
         self.action_id += 1
 
-    def addplanchange(self, x, y): 
+    def add_planchange(self, x, y): 
         self.actions.append(" ".join([str(self.action_id-1),
                             "update",
                             "{:.1f}".format(x),
                             "{:.1f}".format(y),
                             '\n']))
 
-    def addobservation(self, obs, t):
+    def add_observation(self, obs, t):
         if obs:
             for ob in obs:
                 self.observations.append(" ".join([str(self.action_id-1),  # actionID
@@ -384,7 +385,7 @@ class Logger:
                                                 "{:.1f}".format(t),
                                                 "\n"]))
 
-    def addtruth(self, contacts):
+    def add_truth(self, contacts):
         for c in contacts:
             if c.obj_class == 'Target':
                 self.truth.append(' '.join([str(c.id),
@@ -400,7 +401,7 @@ class Logger:
                                             str(c.location[1]),
                                             '\n']))
 
-    def addmeta(self, params):
+    def add_meta(self, params):
         self.metadata = []
         for s in params:
             if isinstance(params[s],str):
@@ -408,6 +409,9 @@ class Logger:
             else:
                 val = str(params[s])
             self.metadata.append('\n'+': '.join([s, val]))
+
+    def add_auxinfo(self, aux_info):
+        pass
 
     def save_data(self, ep_ID):
 
