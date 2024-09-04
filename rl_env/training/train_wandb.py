@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     config = {
         "policy_type": "CnnPolicy",
-        "total_timesteps": 1e7,
+        "total_timesteps": 3e6,
         "env_name": "BasicEnv-v0",
     }
     run = wandb.init(
@@ -39,8 +39,15 @@ if __name__ == "__main__":
 
     kwargs = {
         'n_steps': 1000,
-        'n_epochs': 4, 
+        'n_epochs': 2, 
         'batch_size': 1000,
+        'gae_lambda': 0.95,
+        'gamma': 0.99,
+        'clip_range': 0.2,
+        'ent_coef': 0,
+        'learning_rate': 1e-3,
+        'vf_coef': 0.5,
+        'max_grad_norm': 0.5,
     }
 
     policy_kwargs = {
