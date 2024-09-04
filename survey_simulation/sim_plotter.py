@@ -14,6 +14,9 @@ class Plotter:
             plt.ion()
         plt.show()
 
+    def pause(self, t):
+        plt.pause(t)
+
     def draw(self):
         self.fig.canvas.draw_idle()
         plt.pause(0.0001)
@@ -59,7 +62,7 @@ class Plotter:
                                             zorder=4))
             
     def setup_covmap(self, 
-                     scan_lims, 
+                     map_lims, 
                      min_scan_ang,
                      n_angles, 
                      n_looks):
@@ -68,40 +71,30 @@ class Plotter:
         self.n_looks = n_looks
 
         # coverage map
-        self.cov_plt = self.ax.imshow(np.zeros((scan_lims[3]-scan_lims[2],
-                                                scan_lims[1]-scan_lims[0],
+        self.cov_plt = self.ax.imshow(np.zeros((map_lims[3],
+                                                map_lims[1],
                                                 3)),
                                         zorder=-1,
-                                        extent=(scan_lims[0], scan_lims[1],
-                                                scan_lims[2], scan_lims[3]),
                                         interpolation='bilinear')
 
     def updatecovmap(self, 
                      map_stack):
         
-        m_x = len(map_stack[0][0])
-        m_y = len(map_stack[0])
-        map_hsv = np.zeros((m_y,
-                            m_x,
-                            3))
         if map_stack:
             # count the unique elements of each pixel
-            map_or_rnd = self.min_scan_ang*np.round(np.array(map_stack)/self.min_scan_ang)
-            map_or_rnd.sort(axis=0)
-            m_dif = np.diff(map_or_rnd, axis=0) > 0
-            map_or_cnt = m_dif.sum(axis=0)+1
+            map_or_cnt = (np.array(map_stack[1:])>0).sum(axis=0)
             # count number of times
-            map_cnt = np.count_nonzero(~np.isnan(map_stack), axis=0)
+            map_cnt = map_stack[0]
             # set the hue value
-            hue_val = np.clip(270 - map_or_cnt*(120/self.n_angles), 120, 250)
+            hue_val = np.clip(0.35*(map_or_cnt - 1)/self.n_angles, 0, 0.35)
         else:
-            hue_val = 250
+            hue_val = 0
         # make hsv image
-        map_hsv[:, :, 0] = np.ones((m_y,
-                                    m_x))*hue_val
-        map_hsv[:, :, 1] = np.ones((m_y,
-                                    m_x))
-        map_hsv[:, :, 2] = np.clip(map_cnt/self.n_looks, 0, 1)
+        map_h = np.ones(map_stack[0].shape)*hue_val
+        map_s = np.ones(map_stack[0].shape)
+        map_v = np.clip(map_cnt/self.n_looks, 0, 1)
+        map_hsv = np.stack((map_h,map_s,map_v), axis=2)
+
         # plot new coverage map
 
         # convert hsv to rgb
@@ -336,7 +329,6 @@ class SurveyPlotter(Plotter):
     
     def __init__(self,
                  map_lims,
-                 scan_lims,
                  map_img,
                  xy0,
                  time_lim, 
@@ -348,7 +340,6 @@ class SurveyPlotter(Plotter):
                  n_looks):
         
         self.ml = map_lims
-        self.sl = scan_lims
         self.mi = map_img
         self.xy0 = xy0 
         self.tl = time_lim
@@ -370,7 +361,7 @@ class SurveyPlotter(Plotter):
         self.agent_plt = self.AgentPlot(ax = self.ax,
                                     xy0 = self.xy0)
         self.setup_contacts()
-        self.setup_covmap(self.sl, 
+        self.setup_covmap(self.ml, 
                           self.msa,
                           self.na, 
                           self.nl)
@@ -381,14 +372,11 @@ class SurveyPlotter(Plotter):
         self.draw()
     
     def update_plots(self,
-                     map_stack,
                      detections,
                      agent_xy,
                      agent_xy_hist, 
                      time_remaining):
         # plotting
-        if map_stack:
-            self.updatecovmap(map_stack)
         self.updatecontacts(detections)
         self.agent_plt.updateagent(agent_xy)
         if len(agent_xy_hist) > 1:
@@ -400,13 +388,13 @@ class SurveyPlotter(Plotter):
 
     def reset(self):
         self.agent_plt.updateagent(self.xy0)
-        self.agent.track_hist_plt.set_data((self.xy0[0],
+        self.agent_plt.track_hist_plt.set_data((self.xy0[0],
                                             self.xy0[1]))
 
         self.updatecontacts([])
-        self.cov_plt.set_data(np.zeros((self.sl[3]-self.sl[2],
-                                    self.sl[1]-self.sl[0],
-                                    3)))
+        self.cov_plt.set_data(np.zeros((self.ml[3],
+                                        self.ml[1],
+                                        3)))
         self.det_cls_plt.set_data([], [])
         self.det_grp_plt.set_data([], [])
         self.targ_plt.set_data([], [])
@@ -440,8 +428,8 @@ class AgentViz:
     def __init__(self,
                  map_dims):
         
-        im_init = np.zeros((map_dims[3]-map_dims[2],
-                            map_dims[1]-map_dims[0]))
+        im_init = np.zeros((map_dims[3],
+                            map_dims[1]))
 
         self.fig, axs = plt.subplots(2,2, layout='constrained')
         # Agent pos
