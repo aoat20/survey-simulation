@@ -51,10 +51,16 @@ t, agent_pos, occ_map, cov_map, cts = ss.next_step()
 - "t" is the remaining mission time
 - "agent_pos" is the position of the agent in gridded space, denoted by a 1.
 - "occ_map" is the occupancy grid in image pixel coordinates. 1 is an occupied location and 0 is unoccupied and can therefore be traveled to.
-- "cov_map" is the number of times each grid pixel has been scanned. (soon there will be an extra output for angles).
+- "cov_map" is a list of arrays that show the number of times each grid pixel has been scanned. The [0] index array is the count from any direction, with the [1] indices onwards bins centred on angles incremented from 0-360 in increments of the parameter "min_scan_angle_diff".
 - "cts" is the number of contacts detected in each grid pixel.
 
 To check whether the episode has been terminated, check the "end_episode" flag. This can be followed by the checking the "termination_reason" which will give information about why the episode finished.
+
+Any extra information about an episode can be added as a string to an AUX file in the log files using: 
+```python 
+ss.add_aux_info(information)
+```
+Each subsequent call to this function will add a new line to the file.
 
 To save the episode logs use one of the following:
 ```python

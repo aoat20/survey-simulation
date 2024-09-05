@@ -197,6 +197,7 @@ class Playback:
         n_cov = [n for n in range(len(self.cov_inds))
                     if self.cov_inds[n] <= action_id][-1]
         cov_map = self.cov_map[:n_cov+1]
+
         t = [x[1] for x in self.observations
                 if x[0] <= action_id][-1]
         
@@ -228,6 +229,54 @@ class Playback:
 
         return t, agent_pos, intended_pos, cov_map, contacts, N_g, agent_hist
 
+    def get_next_step(self, action_id):
+        #print("Action ID: ", action_id)
+        # get all the data as it would have been at that action
+
+        # check whether there was a plan change at the desired action
+
+        agent_pos = [n for n in self.actions if n[1] == 'move'
+                    if n[0] <= action_id][-1][2:]
+        intended_pos = agent_pos
+        agent_hist = np.array([n[2:] for n in self.actions if n[1] == 'move'
+                    if n[0] <= action_id])           
+
+        if action_id in self.cov_inds:
+            cov_map = np.array(self.cov_map[self.cov_inds.index(action_id)])
+        else:
+            cov_map = []
+
+        t = [x[1] for x in self.observations
+                if x[0] <= action_id][-1]
+        
+        # Assemble the contacts
+        contacts = [Detection(x[2],
+                                x[3],
+                                x[4],
+                                x[5],
+                                x[6],
+                                [],
+                                None) for x in self.observations
+                    if x[0] <= action_id if len(x) > 2]
+        # add contact clusters
+        # get ungrouped groups
+        ug_inds = [x[2] for x in self.actions
+                    if x[0] <= action_id
+                    if x[1] == 'ungroup']
+        # add all grouped contacts
+        c_inds = [x[3:] for x in self.actions
+                    if x[0] <= action_id
+                    if x[1] == 'group'
+                    if x[2] not in ug_inds]
+        g_n = 0
+        for n in c_inds:
+            for n2 in n:
+                contacts[n2].group_n = g_n
+            g_n += 1
+        N_g = g_n
+
+        return t, agent_pos, intended_pos, cov_map, contacts, N_g, agent_hist
+    
     def load_textfiles(self, save_dir, file_name):
         # find the file that matches
         dir = os.listdir(save_dir)
@@ -304,7 +353,7 @@ class Logger:
     def __init__(self,
                  agent_start,
                  time_lim, 
-                 scan_lims,
+                 map_lims,
                  params, 
                  gnd_trth, 
                  save_dir) -> None:
@@ -317,15 +366,16 @@ class Logger:
         self.observations = []
         self.truth = []
         self.cov = []
+        self.aux_info = []
         # add initial conditions
-        self.addcovmap(np.ones((scan_lims[3]-scan_lims[2],
-                                scan_lims[1]-scan_lims[0]))*np.nan)
-        self.addmove(agent_start)
-        self.addtruth(gnd_trth)
-        self.addobservation([], time_lim)
-        self.addmeta(params)
+        self.add_move(agent_start)
+        self.add_covmap(np.ones((map_lims[3],
+                                map_lims[1]))*np.nan)
+        self.add_truth(gnd_trth)
+        self.add_observation([], time_lim)
+        self.add_meta(params)
 
-    def addmove(self, xy):
+    def add_move(self, xy):
         x, y = xy[0], xy[1]
         self.actions.append(" ".join([str(self.action_id),
                                         "move",
@@ -334,11 +384,11 @@ class Logger:
                                         '\n']))
         self.action_id += 1
 
-    def addcovmap(self, cov_map):
-        self.action_id_cov.append(self.action_id)
+    def add_covmap(self, cov_map):
+        self.action_id_cov.append(self.action_id-1)
         self.cov.append(cov_map)
 
-    def addgroup(self, group_n, c_ind):
+    def add_group(self, group_n, c_ind):
         c_ind.sort()
         c_str = " ".join([str(n) for n in c_ind])
         self.actions.append(" ".join([str(self.action_id),
@@ -356,14 +406,7 @@ class Logger:
                                         '\n']))
         self.action_id += 1
 
-    def addplanchange(self, x, y): 
-        self.actions.append(" ".join([str(self.action_id-1),
-                            "update",
-                            "{:.1f}".format(x),
-                            "{:.1f}".format(y),
-                            '\n']))
-
-    def addobservation(self, obs, t):
+    def add_observation(self, obs, t):
         if obs:
             for ob in obs:
                 self.observations.append(" ".join([str(self.action_id-1),  # actionID
@@ -385,7 +428,7 @@ class Logger:
                                                 "{:.1f}".format(t),
                                                 "\n"]))
 
-    def addtruth(self, contacts):
+    def add_truth(self, contacts):
         for c in contacts:
             if c.obj_class == 'Target':
                 self.truth.append(' '.join([str(c.id),
@@ -401,7 +444,7 @@ class Logger:
                                             str(c.location[1]),
                                             '\n']))
 
-    def addmeta(self, params):
+    def add_meta(self, params):
         self.metadata = []
         for s in params:
             if isinstance(params[s],str):
@@ -409,6 +452,9 @@ class Logger:
             else:
                 val = str(params[s])
             self.metadata.append('\n'+': '.join([s, val]))
+
+    def add_auxinfo(self, new_aux_info):
+        self.aux_info.append(new_aux_info + '\n')
 
     def save_data(self, ep_ID):
 
@@ -432,30 +478,38 @@ class Logger:
         
         # Make the new directory
         os.makedirs(os.path.join(fold_dir, 'COVERAGE'))
+
         # Write actions
         self.actions.append(" ".join([str(self.action_id),
                                         "end "
                                         '\n']))
         f_act = open(os.path.join(fold_dir, ep_str+'_ACTIONS'), 'w')
         f_act.writelines(self.actions)
+
         # write observations
         f_obs = open(os.path.join(fold_dir, ep_str+'_OBSERVATIONS'), 'w')
         f_obs.writelines(self.observations)
+
         # write ground truth and metadata
         f_truth = open(os.path.join(fold_dir, ep_str+'_TRUTH'), 'w')
         f_truth.writelines(self.truth)
         f_meta = open(os.path.join(fold_dir, ep_str+'_META'), 'w')
         f_meta.writelines(self.metadata)
+
         # output coverage matrices
         for n in range(len(self.cov)):
             np.savetxt(os.path.join(fold_dir, 'COVERAGE',
                                     ep_str+"_"+str(self.action_id_cov[n])+"_COVERAGE"),
                         self.cov[n])
 
+        # save auxiliary information
+        f_aux = open(os.path.join(fold_dir, ep_str+'_AUX'), 'w')
+        f_aux.writelines(self.aux_info)
+
     def reset(self, 
               agent_start, 
               new_contactstrth, 
-              scan_lims,
+              map_lims,
               time_lim):
         # initialse
         self.action_id = 0
@@ -465,11 +519,11 @@ class Logger:
         self.truth = []
         self.cov = []
         # add initial conditions
-        self.addcovmap(np.ones((scan_lims[3]-scan_lims[2],
-                                scan_lims[1]-scan_lims[0]))*np.nan)
-        self.addmove(agent_start)
-        self.addtruth(new_contactstrth)
-        self.addobservation([], time_lim)
+        self.add_covmap(np.ones((map_lims[3],
+                                map_lims[1]))*np.nan)
+        self.add_move(agent_start)
+        self.add_truth(new_contactstrth)
+        self.add_observation([], time_lim)
 
 class Map:
     
@@ -478,10 +532,8 @@ class Map:
     def __init__(self, 
                  map_n="",
                  map_path="", 
-                 scan_lims=[0,100,0,100], 
                  map_lims=[0,100,0,100]):
 
-        self.scan_lims = scan_lims
         self.map_lims = map_lims
         self.occ = np.zeros((self.map_lims[3],
                              self.map_lims[1]))
@@ -498,9 +550,6 @@ class Map:
     def setup(self, map_path):
         img = np.asarray(Image.open(map_path))
         img_tmp = img[:,:,0]
-        img_nz = np.where(img_tmp==0)
-        self.scan_lims = (min(img_nz[1]), max(img_nz[1]), 
-                          min(img_nz[0]), max(img_nz[0]))
         self.map_lims = (0, img_tmp.shape[1], 
                          0, img_tmp.shape[0])
         self.occ = np.where(img_tmp==0, 0, 1)
@@ -573,3 +622,104 @@ class Map:
                 return 0 
         return 1
     
+class GriddedData:
+    
+    def __init__(self, 
+                 map_lims: list[int],
+                 angle_diff: float,
+                 occ_map) -> None:
+        # Initialise agent grid
+        self.agent = np.zeros((map_lims[3], 
+                                map_lims[1]),
+                                dtype=int)
+        self.occ_map = occ_map
+
+        # Initialise coverage map
+        self.cov_map = [np.zeros((map_lims[3], 
+                                   map_lims[1]),
+                                   dtype=int)]
+        self.ang_diff = angle_diff
+        self.bins = np.arange(0, 360, self.ang_diff) #- self.ang_diff/2
+        for _ in self.bins:
+            self.cov_map.append(np.zeros((map_lims[3],
+                                         map_lims[1]),
+                                         dtype=int))
+        
+        # Initialise contact grid
+        self.cts = np.zeros((map_lims[3], 
+                                map_lims[1]),
+                                dtype=int)
+
+    def add_cov_map(self, cov_map):
+        # Get the full count of the scans on each pixel
+        cov_temp = self.cov_map[0]
+        cov_cnt = (~np.isnan(cov_map)).astype(int)
+        self.cov_map[0] = cov_temp + cov_cnt
+
+        # Get each angular count
+        b_inds = np.digitize((cov_map + self.ang_diff/2)% 360, self.bins)
+        b_inds[np.isnan(cov_map)] = -1
+        for b in enumerate(self.bins):
+            cov_temp = self.cov_map[b[0]+1]
+            ang_cov_cnt = (b_inds-1 == b[0]).astype(int)
+            self.cov_map[b[0]+1] = cov_temp + ang_cov_cnt
+            
+    def remove_cov_map(self, cov_map):
+        # Get the full count of the scans on each pixel
+        cov_temp = self.cov_map[0]
+        cov_cnt = (~np.isnan(cov_map)).astype(int)
+        self.cov_map[0] = cov_temp - cov_cnt
+
+        # Get each angular count
+        b_inds = np.digitize(cov_map, self.bins)
+        b_inds[np.isnan(cov_map)] = 0
+        for b in enumerate(self.bins):
+            cov_temp = self.cov_map[b[0]+1]
+            ang_cov_cnt = (b_inds == b[0]+1).astype(int)
+            self.cov_map[b[0]+1] = cov_temp - ang_cov_cnt
+
+    def add_agent_pos(self, agent_xy):
+        ag_pos_rnd = np.int16(np.floor(agent_xy))
+        self.agent = np.zeros(self.agent.shape, 
+                              dtype=int)
+        if ag_pos_rnd[0]>0 \
+           and ag_pos_rnd[1]>0 \
+           and ag_pos_rnd[0]<self.occ_map.shape[1] \
+           and ag_pos_rnd[1]<self.occ_map.shape[0]:
+            self.agent[ag_pos_rnd[1],
+                    ag_pos_rnd[0]] = 1
+
+    def add_occ_map(self):
+        pass
+
+    def add_contacts(self, 
+                     contacts):
+        base = 1
+        for cts in contacts:
+            xy = [cts.x, cts.y]
+            c_xy_rnd =  np.int16(base * np.round(np.divide(xy, base)))
+            self.cts[c_xy_rnd[1], 
+                     c_xy_rnd[0]] += 1
+            
+    def remove_contacts(self,
+                        contacts):
+        base = 1
+        for n in range(len(contacts)):
+            cts = contacts[n]
+            xy = [cts.x, cts.y]
+            c_xy_rnd =  np.int16(base * np.round(np.divide(xy, base)))
+            self.cts[c_xy_rnd[1], 
+                     c_xy_rnd[0]] -= 1
+
+    def reset(self):
+        # Initialise agent grid
+        self.agent = np.zeros(self.agent.shape,
+                                dtype=int)
+
+        # Initialise coverage map
+        self.cov_map = [np.zeros(self.cov_map[0].shape,
+                                   dtype=int) for _ in range(len(self.cov_map))]
+
+        # Initialise contact grid
+        self.cts = np.zeros(self.cts.shape,
+                                dtype=int)

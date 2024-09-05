@@ -35,7 +35,7 @@ class CoverageMap:
     """
 
     def __init__(self, 
-                 scan_lims, 
+                 map_lims, 
                  leadinleadout,
                  min_scan_l,
                  scan_width,
@@ -43,8 +43,7 @@ class CoverageMap:
         # reset coverage map variable
         self.map_stack = []
         # unpack relevant parameters
-        self.sa = scan_lims
-        self.scan_area = [int(x) for x in self.sa]
+        self.map_lims = map_lims
         self.leadinleadout = leadinleadout
         self.min_scan_l = min_scan_l
         self.scan_width = scan_width
@@ -61,10 +60,10 @@ class CoverageMap:
         x2 = xy2[0]
         y2 = xy2[1]
 
-        cov_temp = self.pixelrect(x1 - self.scan_area[0],
-                                    x2 - self.scan_area[0],
-                                    y1 - self.scan_area[2],
-                                    y2 - self.scan_area[2])
+        cov_temp = self.pixelrect(x1,
+                                    x2,
+                                    y1,
+                                    y2)
 
         # Compute scan angle
         ang_L_deg = np.rad2deg(cov_temp[4]-np.pi/2+np.pi/2)
@@ -86,9 +85,9 @@ class CoverageMap:
         # add to the stack of orientations
         if len(np.unique(cm))>1:
             self.map_stack.append(cm)
-            success = 1
+            success = True
         else:
-            success = 0
+            success = False
         
         # output the corners and the scan angles
         rect_corners = [cov_temp[2], cov_temp[3]]
@@ -102,8 +101,8 @@ class CoverageMap:
         rec_rot = np.arctan2(y2 - y1,
                                 x2 - x1)
 
-        dy_sa = self.scan_area[3]-self.scan_area[2]
-        dx_sa = self.scan_area[1]-self.scan_area[0]
+        dy_sa = self.map_lims[3]
+        dx_sa = self.map_lims[1]
 
         # Check that the length of scan is above the minimum scan length
         if rec_l > self.min_scan_l and self.scan_width >0:
@@ -128,19 +127,16 @@ class CoverageMap:
                                         [x2-dx_nad, y2-dy_nad],
                                         [x2-dx, y2-dy]], np.int32)
             
-            # get the mask (flipped because image)
-            rect_temp = np.flip(self.rect_to_mask(rect_corners_1,
-                                          [dx_sa, dy_sa]), 0)
+            rect_temp = self.rect_to_mask(rect_corners_1,
+                                          [dx_sa, dy_sa])
             
-            rect_temp2 = np.flip(self.rect_to_mask(rect_corners_2,
-                                          [dx_sa, dy_sa]), 0)
+            rect_temp2 = self.rect_to_mask(rect_corners_2,
+                                          [dx_sa, dy_sa])
 
         else:
             # if too short, fill with empty data
-            rect_temp = np.flip(np.ones((dy_sa,
-                                            dx_sa))*np.nan, 0)
-            rect_temp2 = np.flip(np.ones((dy_sa,
-                                            dx_sa))*np.nan, 0)
+            rect_temp = np.ones((dy_sa, dx_sa))*np.nan
+            rect_temp2 = np.ones((dy_sa, dx_sa))*np.nan
             rect_corners_1 = np.array([[0, 0],
                                         [0, 0],
                                         [0, 0],
@@ -190,7 +186,6 @@ class ContactDetections:
 
     def __init__(self, 
                  loc_uncertainty, 
-                 scan_lims,
                  n_targets, 
                  det_probs, 
                  clutter_density,
@@ -200,7 +195,6 @@ class ContactDetections:
         
         # unpack relevant params
         self.loc_uncertainty = loc_uncertainty
-        self.sa = scan_lims
         self.n_targets = n_targets
         self.det_probs = det_probs
         self.clutter_density = clutter_density
@@ -270,12 +264,12 @@ class ContactDetections:
             # for each side of new scan
             for n in [0, 1]:
                 # check if inside scan area and detected
-                rect_c_tmp = rect_corners[n] + [self.sa[0],
-                                                self.sa[2]]
+                rect_c_tmp = rect_corners[n]
                 x_out, y_out = self.inside_rect(self.truth,
                                                 rect_c_tmp,
                                                 scan_angles[n])
                 rng = 0
+                n_new_dets = 0
                 if x_out:
                     # add new detections
                     for n2 in range(len(x_out)):
@@ -295,8 +289,9 @@ class ContactDetections:
                                         rng,
                                         scan_angles[n]])
                         self.det_n += 1
+                        n_new_dets += 1
         self.scan_n += 1
-        return obs_str
+        return obs_str, n_new_dets
 
     def inside_rect(self, contacts, rect_corners, scan_angle):
         # initialise outputs
