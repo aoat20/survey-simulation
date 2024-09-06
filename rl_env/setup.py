@@ -12,7 +12,7 @@ setuptools.setup(
     packages=['rl_env'],
     install_requires=[
         'gymnasium',
-        'wanb',
+        'wandb',
         'stable-baselines3',
     ],
 )
