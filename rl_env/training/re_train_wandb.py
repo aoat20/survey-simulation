@@ -10,10 +10,11 @@ if __name__ == "__main__":
 
 
     N_ENVS = 4
+    MODEL_PATH = '/Users/edwardclark/Downloads/model - 2024-08-30T142506.573'
 
     config = {
         "policy_type": "CnnPolicy",
-        "total_timesteps": 1e5,
+        "total_timesteps": 1e6,
         "env_name": "BasicEnv-v0",
     }
     run = wandb.init(
@@ -36,27 +37,7 @@ if __name__ == "__main__":
     env = make_vec_env(config['env_name'], n_envs=N_ENVS, env_kwargs=env_kwargs)
     env = VecMonitor(env)
 
-
-    kwargs = {
-        'n_steps': 1000,
-        'n_epochs': 2, 
-        'batch_size': 1000,
-        'gae_lambda': 0.95,
-        'gamma': 0.99,
-        'clip_range': 0.2,
-        'ent_coef': 0,
-        'learning_rate': 1e-3,
-        'vf_coef': 0.5,
-        'max_grad_norm': 0.5,
-    }
-
-    policy_kwargs = {
-        'activation_fn': 'tanh',
-        'normalize_images':False,
-    }
-
-    model = PPO(config['policy_type'], env, verbose = 1,tensorboard_log=f"runs/{run.id}", policy_kwargs=policy_kwargs,device= 'mps',  **kwargs)
-
+    model = PPO.load(MODEL_PATH, env, verbose = 1,tensorboard_log=f"runs/{run.id}", device= 'mps')
     model.learn(total_timesteps=config['total_timesteps'],
             callback=WandbCallback(
             gradient_save_freq=10000,
