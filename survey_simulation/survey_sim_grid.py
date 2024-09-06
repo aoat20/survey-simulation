@@ -307,6 +307,14 @@ class SurveySimulationGrid():
 
         return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts 
         
+    def get_obs(self):
+        ag_pos = self.griddata.agent
+        occ_map = self.griddata.occ_map
+        cov_map = self.griddata.cov_map
+        cts = self.griddata.cts
+        
+        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts 
+
     def next_step_pb(self):
         t, ap, ip, cm, cn, N_g, ah = self.playback.get_next_step(self.action_id)
         _, _, _, cm2, _, _, _ = self.playback.get_next_step(self.action_id+1)
