@@ -108,6 +108,8 @@ class SurveySimulationGrid():
         self.griddata = GriddedData(map_lims=self.map_obj.map_lims, 
                                     angle_diff=params['min_scan_angle_diff'], 
                                     occ_map=self.map_obj.occ)
+        self.timer = Timer(params['time_lim'],
+                               params['t_step'])
 
         if params.get('agent_viz'):
             self.agent_viz = AgentViz(map_dims=self.map_obj.map_lims)
@@ -116,8 +118,6 @@ class SurveySimulationGrid():
             # Generate contact locations
             self.contacts.generate_targets(self.map_obj.occ)
             # instantiate extra objects
-            self.timer = Timer(params['time_lim'],
-                               params['t_step'])
             self.logger = Logger(agent_start=self.agent.xy,
                                  time_lim=params['time_lim'],
                                  map_lims=self.map_obj.map_lims,
@@ -175,14 +175,14 @@ class SurveySimulationGrid():
         while True:
             if self.play:
                 if self.action_id >= self.playback.ep_end:
-                    return
+                    self.plotter.pause(0.1)
                 else:
                     self.action_id += 1
+                    # self.plotter.pause(0.04)
             if self.action_id_prev != self.action_id:
                 self.next_step_pb()
-                print(self.action_id)
 
-            self.plotter.pause(0.04)
+            self.plotter.pause(0.0001)
 
     def load_params(self,
                     param_file: str):
@@ -323,8 +323,13 @@ class SurveySimulationGrid():
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
         self.griddata.add_agent_pos(ap)
         self.griddata.add_contacts(cn)
+        if self.action_id > self.action_id_prev:
+            self.timer.update_time(self.timer.t_step)
+        else:
+            self.timer.update_time(-self.timer.t_step)
 
-        self.plotter.updatetime(t, t)
+        self.plotter.updatetime(self.timer.time_remaining,
+                                self.timer.time_lim)
         self.plotter.agent_plt.updateagent(ap)
         self.plotter.agent_plt.updatetrackhist(ah)
         self.plotter.agent_plt.updatetarget(ip, ip)
@@ -426,8 +431,8 @@ class SurveySimulationGrid():
                                      self.covmap.leadinleadout,
                                      self.covmap.min_scan_l,
                                      self.covmap.scan_width)
-            self.plotter.updatetime(self.timer.time_remaining,
-                                    self.timer.time_temp)
+            self.plotter.updatetime(self.timer.time_temp,
+                                    self.timer.time_lim)
 
     def on_key_manual(self, event):
         # normal operation if episode is ongoing

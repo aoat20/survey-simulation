@@ -171,8 +171,9 @@ class Plotter:
         g_y = [n.y for n in groups]
         self.det_grp_plt.set_data(g_x, g_y)
 
-    def updatetime(self, t, t_tmp):
-        self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(t_tmp, t))
+    def updatetime(self, t_remaining, t_limit):
+        self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(t_remaining, 
+                                                                        self.tl))
 
     def updateps(self, playspeed):
         self.ax.set_title("Playspeed: {:.0f}x".format(playspeed))
@@ -382,7 +383,7 @@ class SurveyPlotter(Plotter):
         if len(agent_xy_hist) > 1:
             self.agent_plt.updatetrackhist(agent_xy_hist)
         self.updatetime(time_remaining,
-                        time_remaining)
+                        self.tl)
         # self.plotter.remove_temp()
         self.draw()
 
