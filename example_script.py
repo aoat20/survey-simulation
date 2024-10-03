@@ -22,5 +22,5 @@ path = '/Users/edwardclark/Documents/SURREY/data/'
 # path = '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/model_testing/data/'
 ss = SurveySimulationGrid('playback', 
                             save_dir=path,
-                            ep_n=11
+                            ep_n=22
                             )
