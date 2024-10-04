@@ -2,10 +2,11 @@ import numpy as np
 import math
 from dataclasses import dataclass
 
+
 def is_point_in_polygon(point, polygon_corners):
     """ 
     Determines whether a point is in a polygon
-    
+
     Args:
         point: A tuple (x, y) 
         polygon_corners: A list of tuples representing the polygon vertices
@@ -19,7 +20,7 @@ def is_point_in_polygon(point, polygon_corners):
     for i in range(n):
         x1, y1 = polygon_corners[i]
         x2, y2 = polygon_corners[(i + 1) % n]
-        
+
         if y > min(y1, y2) \
            and y <= max(y1, y2) \
            and x <= max(x1, x2) \
@@ -27,15 +28,15 @@ def is_point_in_polygon(point, polygon_corners):
             x_inters = (y - y1)*(x2 - x1)/(y2 - y1) + x1
             if x1 == x2 or x < x_inters:
                 inside = not inside
-    return inside 
+    return inside
 
 
 class CoverageMap:
     """_summary_
     """
 
-    def __init__(self, 
-                 map_lims, 
+    def __init__(self,
+                 map_lims,
                  leadinleadout,
                  min_scan_l,
                  scan_width,
@@ -61,9 +62,9 @@ class CoverageMap:
         y2 = xy2[1]
 
         cov_temp = self.pixelrect(x1,
-                                    x2,
-                                    y1,
-                                    y2)
+                                  x2,
+                                  y1,
+                                  y2)
 
         # Compute scan angle
         ang_L_deg = np.rad2deg(cov_temp[4]-np.pi/2+np.pi/2)
@@ -83,12 +84,12 @@ class CoverageMap:
         cm[cR_temp == 1] = ang_R
 
         # add to the stack of orientations
-        if len(np.unique(cm))>1:
+        if len(np.unique(cm)) > 1:
             self.map_stack.append(cm)
             success = True
         else:
             success = False
-        
+
         # output the corners and the scan angles
         rect_corners = [cov_temp[2], cov_temp[3]]
 
@@ -97,15 +98,15 @@ class CoverageMap:
     def pixelrect(self, x1, x2, y1, y2):
         # compute length and rotation of rectangle
         rec_l = math.dist((x2, y2),
-                            (x1, y1)) - 2*self.leadinleadout
+                          (x1, y1)) - 2*self.leadinleadout
         rec_rot = np.arctan2(y2 - y1,
-                                x2 - x1)
+                             x2 - x1)
 
         dy_sa = self.map_lims[3]
         dx_sa = self.map_lims[1]
 
         # Check that the length of scan is above the minimum scan length
-        if rec_l > self.min_scan_l and self.scan_width >0:
+        if rec_l > self.min_scan_l and self.scan_width > 0:
             # account for the leadinleadout length
             x1 += np.cos(rec_rot)*self.leadinleadout
             y1 += np.sin(rec_rot)*self.leadinleadout
@@ -119,59 +120,59 @@ class CoverageMap:
             dx_nad = np.cos((np.pi/2) + rec_rot)*self.nadir_width/2
             # compute corners of scan
             rect_corners_1 = np.array([[x1+dx_nad, y1+dy_nad],
-                                        [x1+dx, y1+dy],
-                                        [x2+dx, y2+dy],
-                                        [x2+dx_nad, y2+dy_nad]], np.int32)
+                                       [x1+dx, y1+dy],
+                                       [x2+dx, y2+dy],
+                                       [x2+dx_nad, y2+dy_nad]], np.int32)
             rect_corners_2 = np.array([[x1-dx, y1-dy],
-                                        [x1-dx_nad, y1-dy_nad],
-                                        [x2-dx_nad, y2-dy_nad],
-                                        [x2-dx, y2-dy]], np.int32)
-            
+                                       [x1-dx_nad, y1-dy_nad],
+                                       [x2-dx_nad, y2-dy_nad],
+                                       [x2-dx, y2-dy]], np.int32)
+
             rect_temp = self.rect_to_mask(rect_corners_1,
                                           [dx_sa, dy_sa])
-            
+
             rect_temp2 = self.rect_to_mask(rect_corners_2,
-                                          [dx_sa, dy_sa])
+                                           [dx_sa, dy_sa])
 
         else:
             # if too short, fill with empty data
             rect_temp = np.ones((dy_sa, dx_sa))*np.nan
             rect_temp2 = np.ones((dy_sa, dx_sa))*np.nan
             rect_corners_1 = np.array([[0, 0],
-                                        [0, 0],
-                                        [0, 0],
-                                        [0, 0]], np.int32)
+                                       [0, 0],
+                                       [0, 0],
+                                       [0, 0]], np.int32)
             rect_corners_2 = np.array([[0, 0],
-                                        [0, 0],
-                                        [0, 0],
-                                        [0, 0]], np.int32)
+                                       [0, 0],
+                                       [0, 0],
+                                       [0, 0]], np.int32)
         return rect_temp, rect_temp2, rect_corners_1, rect_corners_2, rec_rot
 
-    def rect_to_mask(self, 
+    def rect_to_mask(self,
                      rectangle_corners,
                      map_xy) -> np.array:
         width, height = map_xy
         mask = np.zeros((height, width))
 
-        min_x = min(rectangle_corners[0][0], 
+        min_x = min(rectangle_corners[0][0],
                     rectangle_corners[1][0],
                     rectangle_corners[2][0],
                     rectangle_corners[3][0])
-        max_x = max(rectangle_corners[0][0], 
+        max_x = max(rectangle_corners[0][0],
                     rectangle_corners[1][0],
                     rectangle_corners[2][0],
                     rectangle_corners[3][0])
-        min_y = min(rectangle_corners[0][1], 
+        min_y = min(rectangle_corners[0][1],
                     rectangle_corners[1][1],
                     rectangle_corners[2][1],
                     rectangle_corners[3][1])
-        max_y = max(rectangle_corners[0][1], 
+        max_y = max(rectangle_corners[0][1],
                     rectangle_corners[1][1],
                     rectangle_corners[2][1],
                     rectangle_corners[3][1])
-        
-        for y in range(max(min_y,0), min(max_y+1, height)):
-            for x in range(max(min_x,0), min(max_x+1, width)):
+
+        for y in range(max(min_y, 0), min(max_y+1, height)):
+            for x in range(max(min_x, 0), min(max_x+1, width)):
                 if is_point_in_polygon((x, y), rectangle_corners):
                     mask[y, x] = 1
 
@@ -180,19 +181,20 @@ class CoverageMap:
     def reset(self):
         self.map_stack = []
 
+
 class ContactDetections:
     """_summary_
     """
 
-    def __init__(self, 
-                 loc_uncertainty, 
-                 n_targets, 
-                 det_probs, 
+    def __init__(self,
+                 loc_uncertainty,
+                 n_targets,
+                 det_probs,
                  clutter_density,
                  det_probs_clutter,
-                 clutter_ori_mean, 
+                 clutter_ori_mean,
                  clutter_ori_std):
-        
+
         # unpack relevant params
         self.loc_uncertainty = loc_uncertainty
         self.n_targets = n_targets
@@ -212,8 +214,8 @@ class ContactDetections:
     def dets_to_clus(self, c_inds):
         # add detections to cluster
         self.detections = self.add_det_group(self.detections,
-                                                self.group_n,
-                                                c_inds)
+                                             self.group_n,
+                                             c_inds)
 
     def add_det_group(self, dets, group_n, c_inds):
         for n in c_inds:
@@ -235,26 +237,26 @@ class ContactDetections:
         if len(inds):
             # get average position of all selected points and increment
             grp_tmp = self.group_loc(self.detections,
-                                        self.group_n)
+                                     self.group_n)
             self.det_grp.append(grp_tmp)
             self.group_n += 1
         return self.group_n-1, inds
 
     def group_loc(self, detections, group_n):
         x_arr = [d.x for d in detections
-                    if d.group_n == group_n]
+                 if d.group_n == group_n]
         y_arr = [d.y for d in detections
-                    if d.group_n == group_n]
+                 if d.group_n == group_n]
         g_x = np.mean(x_arr)
         g_y = np.mean(y_arr)
         # get the list of angles
         ang_arr = [d.angle for d in detections
-                    if d.group_n == group_n]
+                   if d.group_n == group_n]
         # make new group
         grp_tmp = DetGroup(g_x,
-                            g_y,
-                            ang_arr,
-                            group_n)
+                           g_y,
+                           ang_arr,
+                           group_n)
         return grp_tmp
 
     def add_dets(self, rect_corners, scan_angles):
@@ -275,12 +277,12 @@ class ContactDetections:
                     for n2 in range(len(x_out)):
                         # make new detection
                         det_temp = Detection(self.det_n,
-                                            x_out[n2],
-                                            y_out[n2],
-                                            rng,
-                                            scan_angles[n],
-                                            self.scan_n,
-                                            None)
+                                             x_out[n2],
+                                             y_out[n2],
+                                             rng,
+                                             scan_angles[n],
+                                             self.scan_n,
+                                             None)
                         self.detections.append(det_temp)
                         # output to recorder
                         obs_str.append([self.det_n,
@@ -301,13 +303,13 @@ class ContactDetections:
         for xy in list(contacts):
             # add some uncertainty to the location of the contact
             xy_temp = xy.location + np.random.normal(0,
-                                                    self.loc_uncertainty,
-                                                    size=(1, 2))[0]
+                                                     self.loc_uncertainty,
+                                                     size=(1, 2))[0]
 
             # if all signs the same, point is in rectangle
             if is_point_in_polygon(xy_temp, rect_corners) and rect_corners.any():
                 # check whether it's target or clutter
-                #if xy.obj_class == 'Target':
+                # if xy.obj_class == 'Target':
                 rng_tmp = xy.det_probs[1] - xy.det_probs[0]
                 wrapped_angdiff = np.arctan(np.tan(np.deg2rad(xy.orientation)
                                             - np.deg2rad(scan_angle)))
@@ -315,40 +317,40 @@ class ContactDetections:
                 det_prob = (xy.det_probs[0]
                             + det_prob_temp*rng_tmp)
 
-                #elif xy.obj_class == 'Clutter':
+                # elif xy.obj_class == 'Clutter':
                 #    det_prob = self.dpc
                 # check whether it gets detected
                 if det_prob > np.random.uniform(0, 1):
                     x_out.append(xy_temp[0])
                     y_out.append(xy_temp[1])
         return x_out, y_out
-    
+
     def generate_targets(self, map_occ):
         # Get coordinates of unoccupied spaces on the map
         nz_i = np.where(map_occ == 0)
-        
+
         self.truth = []
         # generate target contacts
         for n in np.arange(self.n_targets):
-            n_rnd = np.random.randint(0,len(nz_i[0]))
+            n_rnd = np.random.randint(0, len(nz_i[0]))
             self.truth.append(TargetObject(n,
-                                            'Target',
-                                            (nz_i[1][n_rnd],
+                                           'Target',
+                                           (nz_i[1][n_rnd],
                                             nz_i[0][n_rnd]),
-                                            round(np.random.uniform(0, 360)),
-                                            self.det_probs))
+                                           round(np.random.uniform(0, 360)),
+                                           self.det_probs))
         # generate non-target contacts
-        # compute how many targets need to be spawned based on a given clutter density 
+        # compute how many targets need to be spawned based on a given clutter density
         nc = len(nz_i[0])*self.clutter_density
         for n in np.arange(nc):
-            n_rnd = np.random.randint(0,len(nz_i[0]))
+            n_rnd = np.random.randint(0, len(nz_i[0]))
             self.truth.append(TargetObject(n+self.n_targets,
-                                                'Clutter',
-                                                (nz_i[1][n_rnd],
-                                                 nz_i[0][n_rnd]),
-                                                np.random.normal(self.clutter_ori_mean, 
-                                                                 self.clutter_ori_std), 
-                                                self.det_probs_clutter))
+                                           'Clutter',
+                                           (nz_i[1][n_rnd],
+                                            nz_i[0][n_rnd]),
+                                           np.random.normal(self.clutter_ori_mean,
+                                                            self.clutter_ori_std),
+                                           self.det_probs_clutter))
 
     def reset(self):
         # initialise vars
@@ -357,6 +359,7 @@ class ContactDetections:
         self.det_n = 0
         self.scan_n = 0
         self.group_n = 0
+
 
 @dataclass
 class Detection:
@@ -368,12 +371,14 @@ class Detection:
     scan_n: int
     group_n: int
 
+
 @dataclass
 class DetGroup:
     x: float
     y: float
     angles: list
     group_n: int
+
 
 @dataclass
 class TargetObject:
