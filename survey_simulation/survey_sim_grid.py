@@ -16,6 +16,7 @@ class SurveySimulationGrid():
                  params_filepath='params.txt',
                  save_dir='data',
                  ep_n=0,
+                 log_file='',
                  **kwargs):
 
         # Check whether mode of operation is valid
@@ -39,7 +40,10 @@ class SurveySimulationGrid():
         if mode == "manual" or mode == "test":
             params = self.load_params(params_filepath)
         elif mode == "playback":
-            ep_dir = os.path.join(save_dir, "Episode"+str(ep_n))
+            if log_file != '':
+                ep_dir = log_file
+            else:
+                ep_dir = os.path.join(save_dir, "Episode"+str(ep_n))
             l_dir = os.listdir(ep_dir)
             p_path = [x for x in l_dir if 'META' in x][0]
             params = self.load_params(os.path.join(ep_dir, p_path))
@@ -132,7 +136,7 @@ class SurveySimulationGrid():
                                  gnd_trth=self.contacts.truth,
                                  save_dir=save_dir)
 
-        if mode == "manual" or mode == "playback" or params['plotter']:
+        if mode == "manual" or params['plotter']:
             self.plotter = SurveyPlotter(map_lims=self.map_obj.map_lims,
                                          map_img=self.map_obj.img,
                                          xy0=self.agent.xy,
@@ -157,14 +161,14 @@ class SurveySimulationGrid():
                                                       self.on_pick)
             self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
                                                       self.on_key_manual)
-        elif mode == 'playback':
+        elif mode == 'playback' and hasattr(self, 'plotter'):
             self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
                                                       self.on_key_playback)
 
         # Set the simulator running
         if mode == "manual":
             self.plotting_loop()
-        elif mode == "playback":
+        elif mode == "playback" and hasattr(self, 'plotter'):
             self.plotting_loop_pb()
 
     def plotting_loop(self):
@@ -188,6 +192,14 @@ class SurveySimulationGrid():
                 self.next_step_pb()
 
             self.plotter.pause(0.0001)
+
+    def playback_step(self):
+        if self.action_id >= self.playback.ep_end:
+            return 0
+        else:
+            self.action_id += 1
+            self.next_step_pb()
+            return 1
 
     def load_params(self,
                     param_file: str):
@@ -322,34 +334,44 @@ class SurveySimulationGrid():
         return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
 
     def next_step_pb(self):
+        # Get current action_id data and following step cov_map
         t, ap, ip, cm, cn, N_g, ah = self.playback.get_next_step(
             self.action_id)
         _, _, _, cm2, _, _, _ = self.playback.get_next_step(self.action_id+1)
 
+        # Move the agent
+        self.agent.move_to_position(ap)
+
+        # Assemble the groups list
         grps = []
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
-        self.griddata.add_agent_pos(ap)
-        self.griddata.add_contacts(cn)
+
+        # Update the time based on whether the boat has gone forward or back
         if self.action_id > self.action_id_prev:
             self.timer.update_time(self.timer.t_step)
         else:
             self.timer.update_time(-self.timer.t_step)
 
-        self.plotter.updatetime(self.timer.time_remaining,
-                                self.timer.time_lim)
-        self.plotter.agent_plt.updateagent(ap)
-        self.plotter.agent_plt.updatetrackhist(ah)
-        self.plotter.agent_plt.updatetarget(ip, ip)
+        # Update the griddata outputs
+        self.griddata.add_agent_pos(ap)
+        self.griddata.add_contacts(cn)
         if self.action_id > self.action_id_prev:
             if isinstance(cm, np.ndarray):
                 self.griddata.add_cov_map(cm)
         else:
             if isinstance(cm2, np.ndarray):
                 self.griddata.remove_cov_map(cm2)
-        self.plotter.updatecovmap(self.griddata.cov_map)
-        self.plotter.updatecontacts(cn)
-        self.plotter.updategroups(grps)
-        self.plotter.draw()
+
+        if hasattr(self, 'plotter'):
+            self.plotter.updatetime(self.timer.time_remaining,
+                                    self.timer.time_lim)
+            self.plotter.agent_plt.updateagent(ap)
+            self.plotter.agent_plt.updatetrackhist(ah)
+            self.plotter.agent_plt.updatetarget(ip, ip)
+            self.plotter.updatecovmap(self.griddata.cov_map)
+            self.plotter.updatecontacts(cn)
+            self.plotter.updategroups(grps)
+            self.plotter.draw()
 
         if hasattr(self, 'agent_viz'):
             ag_pos = self.griddata.agent

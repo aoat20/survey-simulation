@@ -71,7 +71,19 @@ If the episode number, ep_n, is omitted, the episode will be numbered the next a
 
 ### Playback
 Playback mode is for playing back episode logs. "left" and "right" keys go backwards and forwards through actions, or "space" to play/pause.
-`save_dir` is directory of your logs and the extra argument `ep_n` is the episode number to load.
+`save_dir` is directory of your logs and the extra argument `ep_n` is the episode number to load. Alternatively, the parameter `log_file` can be used to specify the log file directory. 
+
+To run in playback mode without the plotter, set the plotter flag to 0 and then use the `playback_step()` function to move forward through the episode, checking the output with each call to make sure the episode hasn't ended. The output of the function will be `0` at the end of the episode. Internal properties and methods can then be accessed, such as the for the agent or the griddata. For example:
+```python 
+ss = SurveySimulationGrid('playback',
+                          agent_viz=0,
+                          plotter=0,
+                          log_file='/home/user/data/Episode3')
+while running:
+    running = ss.playback_step()
+    path_length = ss.agent.get_current_path_len()
+    obs = ss.get_obs()
+```
 
 ## Demo
 This is included in example_script.py
