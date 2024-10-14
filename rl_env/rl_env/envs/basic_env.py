@@ -122,11 +122,15 @@ class BasicEnv(gym.Env):
 
         if self.obs_type == 'time_only':
             observation = np.array([t / self.survey_simulation.timer.time_lim])
-        if self.obs_type == 'coverage_occupancy':
+        elif self.obs_type == 'coverage_occupancy':
 
             #stack in new axis
   
             observation = np.stack([occ_map, np.array(cov_map[0]),agent_pos ], axis=0, dtype=np.float32)
+        #if obs type is something else return not implemented error
+        else:
+            raise NotImplementedError('Observation type not implemented')
+        
 
 
         return observation
