@@ -129,7 +129,7 @@ class SurveySimulationGrid():
             # Generate contact locations
             self.contacts.generate_targets(self.map_obj.occ)
             # instantiate extra objects
-            self.logger = Logger(agent_start=agent_start,
+            self.logger = Logger(agent_start=self.agent.xy,
                                  time_lim=params['time_lim'],
                                  map_lims=self.map_obj.map_lims,
                                  params=params,
