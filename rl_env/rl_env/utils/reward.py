@@ -44,7 +44,12 @@ class RewardFunction():
     def _get_reward_from_log_file(self, **kwargs):
         #create playback survey simulation with path to log file and loop through the log file to get reward
         survey_simulation = SurveySimulationGrid('playback', log_file=self.log_file)
-        
+        survey_end = kwargs.get('survey_end', None) 
+
+        #step through the simulation to get the reward
+
+        #calculate the reward up to requested step or end of survey
+
         return NotImplementedError('Implement this method to get reward from log file')
 
 
