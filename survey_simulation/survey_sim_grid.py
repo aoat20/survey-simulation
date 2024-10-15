@@ -6,6 +6,7 @@ from survey_simulation.survey_classes import ContactDetections, CoverageMap
 from survey_simulation.sim_classes import Timer, Playback, Logger, Map, Agent, GriddedData
 import matplotlib.pyplot as plt
 
+
 class SurveySimulationGrid():
     """_summary_
     """
@@ -14,9 +15,10 @@ class SurveySimulationGrid():
                  mode='manual',
                  params_filepath='params.txt',
                  save_dir='data',
-                 ep_n=0, 
+                 ep_n=0,
+                 log_file='',
                  **kwargs):
-        
+
         # Check whether mode of operation is valid
         modes = ['manual',
                  'test',
@@ -38,7 +40,10 @@ class SurveySimulationGrid():
         if mode == "manual" or mode == "test":
             params = self.load_params(params_filepath)
         elif mode == "playback":
-            ep_dir = os.path.join(save_dir, "Episode"+str(ep_n))
+            if log_file != '':
+                ep_dir = log_file
+            else:
+                ep_dir = os.path.join(save_dir, "Episode"+str(ep_n))
             l_dir = os.listdir(ep_dir)
             p_path = [x for x in l_dir if 'META' in x][0]
             params = self.load_params(os.path.join(ep_dir, p_path))
@@ -57,14 +62,14 @@ class SurveySimulationGrid():
         # Set random seed if required for debugging purposes
         if mode == "manual" or mode == 'test':
             if 'rand_seed' in params.keys():
-                np.random.seed(params['rand_seed'])     
+                np.random.seed(params['rand_seed'])
 
         ################ instantiate all the class objects ###############
 
         # Set up the map
         # if a default map is needed
         # else get the map from the location map_path
-        # else just make an empty space to move around in 
+        # else just make an empty space to move around in
         if 'map_n' in params:
             self.map_obj = Map(map_n=params['map_n'])
         elif 'map_path' in params:
@@ -72,8 +77,14 @@ class SurveySimulationGrid():
         else:
             self.map_obj = Map(map_lims=params['map_area_lims'])
 
-        # Set the agent start position 
-        if params.get('random_start') == 1:
+        if mode == "playback":
+            self.playback = Playback(ep_dir)
+
+        # Set the agent start position
+        if mode == 'playback':
+            d_temp = self.playback.get_data(0)
+            agent_start = d_temp[1]
+        elif params.get('random_start') == 1:
             # Random start anywhere
             agent_start = self.map_obj.random_start()
         elif params.get('random_start') == 2:
@@ -89,7 +100,7 @@ class SurveySimulationGrid():
         # Get t step and grid spacing
         self.agent = Agent(xy_start=agent_start,
                            speed=params['agent_speed'],
-                           scan_thr = params['scan_thr'])
+                           scan_thr=params['scan_thr'])
         # Check if agent start position is in the map bounds
         self.map_obj.is_occupied(self.agent.xy)
         self.contacts = ContactDetections(loc_uncertainty=params['loc_uncertainty'],
@@ -104,30 +115,28 @@ class SurveySimulationGrid():
                                   min_scan_l=params['min_scan_l'],
                                   scan_width=params['scan_width'],
                                   nadir_width=params['nadir_width'])
-        
-        self.griddata = GriddedData(map_lims=self.map_obj.map_lims, 
-                                    angle_diff=params['min_scan_angle_diff'], 
+
+        self.griddata = GriddedData(map_lims=self.map_obj.map_lims,
+                                    angle_diff=params['min_scan_angle_diff'],
                                     occ_map=self.map_obj.occ)
         self.timer = Timer(params['time_lim'],
-                               params['t_step'])
+                           params['t_step'])
 
         if params.get('agent_viz'):
             self.agent_viz = AgentViz(map_dims=self.map_obj.map_lims)
-        
+
         if mode == "manual" or mode == 'test':
             # Generate contact locations
             self.contacts.generate_targets(self.map_obj.occ)
             # instantiate extra objects
-            self.logger = Logger(agent_start=self.agent.xy,
+            self.logger = Logger(agent_start=agent_start,
                                  time_lim=params['time_lim'],
                                  map_lims=self.map_obj.map_lims,
                                  params=params,
                                  gnd_trth=self.contacts.truth,
                                  save_dir=save_dir)
-        elif mode == "playback": 
-            self.playback = Playback(ep_dir)
 
-        if mode == "manual" or mode == "playback" or params['plotter']:
+        if mode == "manual" or params['plotter']:
             self.plotter = SurveyPlotter(map_lims=self.map_obj.map_lims,
                                          map_img=self.map_obj.img,
                                          xy0=self.agent.xy,
@@ -145,21 +154,21 @@ class SurveySimulationGrid():
         if mode == "manual":
             # mouse and key event handlers
             self.plotter.ax.figure.canvas.mpl_connect('button_press_event',
-                                                        self.on_click)
+                                                      self.on_click)
             self.plotter.ax.figure.canvas.mpl_connect('motion_notify_event',
-                                                        self.mouse_move)
+                                                      self.mouse_move)
             self.plotter.ax.figure.canvas.mpl_connect('pick_event',
-                                                        self.on_pick)
+                                                      self.on_pick)
             self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
-                                                        self.on_key_manual)
-        elif mode == 'playback':
+                                                      self.on_key_manual)
+        elif mode == 'playback' and hasattr(self, 'plotter'):
             self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
                                                       self.on_key_playback)
-        
-        # Set the simulator running 
+
+        # Set the simulator running
         if mode == "manual":
             self.plotting_loop()
-        elif mode == "playback":
+        elif mode == "playback" and hasattr(self, 'plotter'):
             self.plotting_loop_pb()
 
     def plotting_loop(self):
@@ -184,13 +193,21 @@ class SurveySimulationGrid():
 
             self.plotter.pause(0.0001)
 
+    def playback_step(self):
+        if self.action_id >= self.playback.ep_end:
+            return 0
+        else:
+            self.action_id += 1
+            self.next_step_pb()
+            return 1
+
     def load_params(self,
                     param_file: str):
         param_dict = {}
         with open(param_file) as fh:
             for line in fh:
                 # handle empty lines and commented
-                if line.strip() and not line[0]=='#':
+                if line.strip() and not line[0] == '#':
                     # split keys and values
                     key, value = [x.strip()
                                   for x in line.strip().split(':', 1)]
@@ -214,7 +231,7 @@ class SurveySimulationGrid():
                             param_dict[key] = int(value)
 
         return param_dict
-           
+
     def check_termination(self):
         # Termination conditions
         # Timer runs out
@@ -226,7 +243,7 @@ class SurveySimulationGrid():
             self.terminate_episode()
             self.termination_reason = "Grounded"
         # Returns home
-        
+
     def new_action(self,
                    action_type: str,
                    action):
@@ -236,7 +253,7 @@ class SurveySimulationGrid():
         action_types = ['move',
                         'group',
                         'ungroup']
-        
+
         # Check action type
         if action_type not in action_types:
             raise ValueError("Invalid action type. " +
@@ -245,11 +262,11 @@ class SurveySimulationGrid():
         # do action
         if action_type == 'move':
             # check move is valid
-            if isinstance(action,int) or isinstance(action,float):
+            if isinstance(action, int) or isinstance(action, float):
                 self.agent.set_speedandcourse(self.agent.speed0,
                                               action)
             else:
-                raise ValueError("Invalid move action. Should be " 
+                raise ValueError("Invalid move action. Should be "
                                  "a float/int representing the course.")
 
         elif action_type == 'group':
@@ -261,12 +278,12 @@ class SurveySimulationGrid():
         success = False
         if not self.end_episode:
             self.timer.update_time(self.timer.t_step)
-            if self.agent.speed>0:
+            if self.agent.speed > 0:
                 self.agent.advance_one_step(self.timer.t_step)
                 self.logger.add_move(self.agent.xy)
                 self.griddata.add_agent_pos(self.agent.xy)
 
-            # check if path is still straight and if not, 
+            # check if path is still straight and if not,
             # compute the previous coverage and contacts
             ind0 = self.agent.check_path_straightness()
             if ind0 is not None:
@@ -277,14 +294,15 @@ class SurveySimulationGrid():
                     obs_str, n_dets = self.contacts.add_dets(rc, ang)
                     # Add to logger
                     self.logger.add_covmap(self.covmap.map_stack[-1])
-                    self.logger.add_observation(obs_str, 
-                                               self.timer.time_remaining)
+                    self.logger.add_observation(obs_str,
+                                                self.timer.time_remaining)
                     # Add to gridded summary
                     self.griddata.add_cov_map(self.covmap.map_stack[-1])
-                    if n_dets>0:
-                        self.griddata.add_contacts([self.contacts.detections[-n_dets]])
+                    if n_dets > 0:
+                        self.griddata.add_contacts(
+                            [self.contacts.detections[-n_dets]])
 
-        if hasattr(self,'plotter'):
+        if hasattr(self, 'plotter'):
             if success:
                 self.plotter.updatecovmap(self.griddata.cov_map)
             self.plotter.update_plots(self.contacts.detections,
@@ -296,63 +314,74 @@ class SurveySimulationGrid():
         occ_map = self.griddata.occ_map
         cov_map = self.griddata.cov_map
         cts = self.griddata.cts
-        
+
         if hasattr(self, 'agent_viz'):
             self.agent_viz.update(ag_pos,
-                                occ_map,
-                                cov_map[0],
-                                cts)
+                                  occ_map,
+                                  cov_map[0],
+                                  cts)
 
         self.check_termination()
 
-        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts 
-        
+        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
+
     def get_obs(self):
         ag_pos = self.griddata.agent
         occ_map = self.griddata.occ_map
         cov_map = self.griddata.cov_map
         cts = self.griddata.cts
-        
-        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts 
+
+        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
 
     def next_step_pb(self):
-        t, ap, ip, cm, cn, N_g, ah = self.playback.get_next_step(self.action_id)
+        # Get current action_id data and following step cov_map
+        t, ap, ip, cm, cn, N_g, ah = self.playback.get_next_step(
+            self.action_id)
         _, _, _, cm2, _, _, _ = self.playback.get_next_step(self.action_id+1)
 
+        # Move the agent
+        self.agent.move_to_position(ap)
+
+        # Assemble the groups list
         grps = []
         [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
-        self.griddata.add_agent_pos(ap)
-        self.griddata.add_contacts(cn)
+
+        # Update the time based on whether the boat has gone forward or back
         if self.action_id > self.action_id_prev:
             self.timer.update_time(self.timer.t_step)
         else:
             self.timer.update_time(-self.timer.t_step)
 
-        self.plotter.updatetime(self.timer.time_remaining,
-                                self.timer.time_lim)
-        self.plotter.agent_plt.updateagent(ap)
-        self.plotter.agent_plt.updatetrackhist(ah)
-        self.plotter.agent_plt.updatetarget(ip, ip)
-        if self.action_id>self.action_id_prev:
+        # Update the griddata outputs
+        self.griddata.add_agent_pos(ap)
+        self.griddata.add_contacts(cn)
+        if self.action_id > self.action_id_prev:
             if isinstance(cm, np.ndarray):
                 self.griddata.add_cov_map(cm)
         else:
             if isinstance(cm2, np.ndarray):
                 self.griddata.remove_cov_map(cm2)
-        self.plotter.updatecovmap(self.griddata.cov_map)
-        self.plotter.updatecontacts(cn)
-        self.plotter.updategroups(grps)
-        self.plotter.draw()
-        
+
+        if hasattr(self, 'plotter'):
+            self.plotter.updatetime(self.timer.time_remaining,
+                                    self.timer.time_lim)
+            self.plotter.agent_plt.updateagent(ap)
+            self.plotter.agent_plt.updatetrackhist(ah)
+            self.plotter.agent_plt.updatetarget(ip, ip)
+            self.plotter.updatecovmap(self.griddata.cov_map)
+            self.plotter.updatecontacts(cn)
+            self.plotter.updategroups(grps)
+            self.plotter.draw()
+
         if hasattr(self, 'agent_viz'):
             ag_pos = self.griddata.agent
             occ_map = self.griddata.occ_map
             cov_map = self.griddata.cov_map
             cts = self.griddata.cts
             self.agent_viz.update(ag_pos,
-                                occ_map,
-                                cov_map[0],
-                                cts)
+                                  occ_map,
+                                  cov_map[0],
+                                  cts)
         self.action_id_prev = self.action_id
 
     def add_group(self, c_inds):
@@ -389,21 +418,22 @@ class SurveySimulationGrid():
         self.covmap.reset()
         self.contacts.reset()
         self.timer.reset()
-        self.logger.reset(self.agent.xy, 
-                          self.contacts.truth, 
+        self.logger.reset(self.agent.xy,
+                          self.contacts.truth,
                           self.map_obj.map_lims,
                           self.timer.time_lim)
         self.griddata.reset()
-        if hasattr(self,'plotter'):
+        if hasattr(self, 'plotter'):
             self.plotter.reset()
         self.end_episode = False
 
     def save_episode(self, ep_n=None):
+
         self.logger.save_data(ep_n)
         self.end_episode = True
 
     def terminate_episode(self):
-        if hasattr(self,'plotter'):
+        if hasattr(self, 'plotter'):
             self.plotter.reveal_targets(self.contacts.truth)
             self.plotter.remove_temp()
         self.timer.time_remaining = 0
@@ -422,12 +452,12 @@ class SurveySimulationGrid():
                 x, y = self.round_to_angle(x0, y0, x_i, y_i)
             else:
                 x, y = x_i, y_i
-            self.timer.update_temp((x0, y0), 
-                                   (x, y), 
-                                   self.agent.xy_hist[0], 
+            self.timer.update_temp((x0, y0),
+                                   (x, y),
+                                   self.agent.xy_hist[0],
                                    self.agent.speed0)
             self.plotter.update_temp(x0, y0,
-                                     x, y, 
+                                     x, y,
                                      self.covmap.leadinleadout,
                                      self.covmap.min_scan_l,
                                      self.covmap.scan_width)
@@ -456,7 +486,7 @@ class SurveySimulationGrid():
                 self.terminate_episode()
             elif event.key == '=':
                 print('Reveal locations with # before saving')
-        else:   
+        else:
             # can save file if episode is finished
             if event.key == '=':
                 self.save_episode()
@@ -496,7 +526,7 @@ class SurveySimulationGrid():
             # check if the requested position is in an occupied space
             if not self.map_obj.occ[round(y_i), round(x_i)]:
                 # check that the path doesn't go through occupied spaces
-                cp = self.map_obj.check_path(x0,y0,x_i,y_i)
+                cp = self.map_obj.check_path(x0, y0, x_i, y_i)
                 if cp:
                     # snap to angle or not
                     if self.snaptoangle:
@@ -506,7 +536,7 @@ class SurveySimulationGrid():
                     self.agent.destination_req((x, y))
                 else:
                     self.plotter.p.set_facecolor((1, 1, 1))
-            else: 
+            else:
                 self.plotter.p.set_facecolor((1, 1, 1))
 
     def on_pick(self, event):
@@ -528,6 +558,7 @@ class SurveySimulationGrid():
                 self.plotter.updategroups(self.contacts.det_grp)
                 # log ungrouped
                 self.logger.ungroup(g_inds)
+
 
 if __name__ == '__main__':
     ss = SurveySimulationGrid('manual',
