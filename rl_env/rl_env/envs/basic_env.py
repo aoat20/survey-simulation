@@ -1,6 +1,8 @@
 import gymnasium as gym
 from gymnasium import spaces
 
+from ..utils.reward import RewardFunction
+
 print (gym.__version__)
 import numpy as np
 from stable_baselines3 import PPO
@@ -48,6 +50,11 @@ class BasicEnv(gym.Env):
             raise NotImplementedError('Observation type not implemented')
         
 
+        #set reward function
+        reward_kwargs = kwargs.get('reward_kwargs', {})
+        reward_kwargs['type'] = 'live'
+        reward_kwargs['survey_simulation'] = self.survey_simulation
+        self.reward_function = RewardFunction(**reward_kwargs)
 
         self.set_action_space()
         self.set_observation_space()
@@ -84,7 +91,7 @@ class BasicEnv(gym.Env):
         self.survey_simulation.new_action('move',self.actions[action])
 
         observation = self._get_observation()
-        reward = self.get_reward()
+        reward = self.reward_function.get_reward()
 
 
         terminated = False
@@ -135,24 +142,25 @@ class BasicEnv(gym.Env):
 
         return observation
     
-    def get_reward(self):
+    # def get_reward(self):
 
-        # reward = -1 #default reward is -1 for each step to minimize the number of steps
+    #     # reward = -1 #default reward is -1 for each step to minimize the number of steps
 
-        #updated reward function here (base it on the coverage map)
-        step_scale = 100
-
-
-        cov_map_non_zero =  np.count_nonzero(~np.isnan(self.survey_simulation.covmap.map_stack),
-                                            axis=0)
-        reward = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
+    #     #updated reward function here (base it on the coverage map)
+    #     step_scale = 100
 
 
-        #reward every step with straight line, then end of section with covered area
-        step_reward = self.survey_simulation.agent.get_current_path_len()  / step_scale#reward for moving straight
-        reward += step_reward #add the step reward to the total reward 
+    #     cov_map_non_zero =  np.count_nonzero(~np.isnan(self.survey_simulation.covmap.map_stack),
+    #                                         axis=0)
+    #     reward = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
 
-        return reward
+
+    #     #reward every step with straight line, then end of section with covered area
+    #     step_reward = self.survey_simulation.agent.get_current_path_len()  / step_scale#reward for moving straight
+    #     reward += step_reward #add the step reward to the total reward 
+
+    #     return reward
+    
 
     def reset(self, *, seed = None, options = None) :
         super().reset(seed=seed)

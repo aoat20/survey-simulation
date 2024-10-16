@@ -3,7 +3,7 @@ import rl_env
 from stable_baselines3 import PPO
 
 MODEL_PATH = '/Users/edwardclark/Downloads/ppo_model_server_30000000_steps.zip'
-VIS_STEPS = 1000
+VIS_STEPS = 100
 
 #create env 
 
