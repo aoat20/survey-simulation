@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
     config = {
         "policy_type": "CnnPolicy",
-        "total_timesteps": 1e5,
+        "total_timesteps": 2e6,
         "env_name": "BasicEnv-v0",
     }
     run = wandb.init(

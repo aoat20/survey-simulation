@@ -1,10 +1,11 @@
-import numpy as np
-import os
 import math
-import shutil
-from survey_simulation.survey_classes import Detection
-from PIL import Image
+import os
 import random
+import shutil
+
+import numpy as np
+from PIL import Image
+from survey_simulation.survey_classes import Detection
 
 
 class Agent:

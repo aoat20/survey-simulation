@@ -2,8 +2,8 @@ import gymnasium as gym
 import rl_env
 from stable_baselines3 import PPO
 
-MODEL_PATH = '/Users/edwardclark/Downloads/ppo_model_server_30000000_steps.zip'
-VIS_STEPS = 100
+MODEL_PATH = '/Users/edwardclark/Documents/SURREY/models/tmjaxm1s/model.zip'
+VIS_STEPS = 1000
 
 #create env 
 
@@ -26,7 +26,7 @@ obs,_ = env.reset()
 for i in range(VIS_STEPS):
     action, _states = model.predict(obs)
     obs, rewards, terminated ,  truncated, info = env.step(action)
-    env.render()
+    # env.render()
     if terminated or truncated:
         obs , _ = env.reset()
 
