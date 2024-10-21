@@ -123,7 +123,8 @@ class SurveySimulationGrid():
                            params['t_step'])
 
         if params.get('agent_viz'):
-            self.agent_viz = AgentViz(map_dims=self.map_obj.map_lims)
+            self.agent_viz = AgentViz(map_dims=self.map_obj.map_lims,
+                                      occ_map=self.map_obj.occ)
 
         if mode == "manual" or mode == 'test':
             # Generate contact locations
@@ -422,7 +423,7 @@ class SurveySimulationGrid():
                           self.contacts.truth,
                           self.map_obj.map_lims,
                           self.timer.time_lim)
-        self.griddata.reset()
+        self.griddata.reset(agent_xy=self.agent.xy)
         if hasattr(self, 'plotter'):
             self.plotter.reset()
         self.end_episode = False

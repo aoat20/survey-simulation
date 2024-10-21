@@ -720,10 +720,10 @@ class GriddedData:
             self.cts[c_xy_rnd[1],
                      c_xy_rnd[0]] -= 1
 
-    def reset(self):
+    def reset(self,
+              agent_xy):
         # Initialise agent grid
-        self.agent = np.zeros(self.agent.shape,
-                              dtype=int)
+        self.agent = agent_xy
 
         # Initialise coverage map
         self.cov_map = [np.zeros(self.cov_map[0].shape,
