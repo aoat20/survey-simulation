@@ -1,6 +1,4 @@
-'''
-reward functions for the RL environment
-can be used to define custom reward functions
+'''can be used to define custom reward functions
 should be able to take a log file and calculate the reward based on the log file
 '''
 
@@ -19,7 +17,27 @@ def register_reward_function(name):
 
 ### make into reward function class 
 
+
 class RewardFunction():
+    """
+    RewardFunction class to calculate the rewards in the survey simulation grid class.
+    Attributes:
+        type (str): The type of reward function, either 'live' or 'log_file'.
+        survey_simulation (SurveySimulationGrid): The survey simulation object, required if type is 'live'.
+        log_file (str): The path to the log file, required if type is 'log_file'.
+        reward_function_id (str): The identifier for the specific reward function to use.
+    Methods:
+        __init__(**kwargs):
+            Initializes the RewardFunction with the given parameters.
+        get_reward(**kwargs):
+            Returns the reward based on the type of reward function.
+        _get_live_reward(**kwargs):
+            Calculates and returns the reward for the 'live' type reward function.
+        _get_reward_from_log_file(**kwargs):
+            Calculates and returns the reward for the 'log_file' type reward function.
+    """
+
+
 
     def __init__(self, **kwargs):
         self.type = kwargs.get('type', 'live')
@@ -86,6 +104,32 @@ class RewardFunction():
         return NotImplementedError('Implement this method to get reward from log file')
 
 
+"""
+Reward functions can be registered using the `register_reward_function` decorator. 
+This allows you to define custom reward functions and register them with a unique name. 
+These registered reward functions can then be used by specifying their name in the `reward_id` keyword argument 
+when initializing the `RewardFunction` class.
+
+Example of registering a reward function:
+
+@register_reward_function('custom_reward')
+def custom_reward_function(survey_simulation: SurveySimulationGrid, **kwargs):
+    # Implement custom reward logic here
+    reward = ...
+    return reward
+
+Example of using a registered reward function:
+
+# Initialize the RewardFunction with the registered reward function name
+reward_function = RewardFunction(type='live', survey_simulation=survey_simulation_instance, reward_id='custom_reward')
+
+# Get the reward
+reward = reward_function.get_reward()
+"""
+
+
+
+#implement reward functions here 
 
 @register_reward_function('default')
 def default_reward_function(survey_simulation: SurveySimulationGrid, step_scale=100):

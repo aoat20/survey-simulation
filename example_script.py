@@ -25,5 +25,7 @@ path = '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/model_testi
 #episode 4, 15
 ss = SurveySimulationGrid('playback', 
                             save_dir=path,
-                            ep_n=0
+                            ep_n=7,
+                            plotter =1,
+                            agent_viz = 1,
                             )

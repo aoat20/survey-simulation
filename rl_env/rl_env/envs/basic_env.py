@@ -110,7 +110,7 @@ class BasicEnv(gym.Env):
 
 
 
-    def _get_observation(self):
+    def _get_observation(self,reset=False):
         '''
         Get the current observation from the simulation
         t - time step
@@ -119,7 +119,10 @@ class BasicEnv(gym.Env):
         cov_map - coverage map
         cts - contacts
         '''
-        t, agent_pos, occ_map, cov_map, cts = self.survey_simulation.next_step()
+        if reset:
+            t, agent_pos, occ_map, cov_map, cts = self.survey_simulation.get_obs()
+        else:
+            t, agent_pos, occ_map, cov_map, cts = self.survey_simulation.next_step()
 
 
 
@@ -172,7 +175,7 @@ class BasicEnv(gym.Env):
         info = {}
         self.survey_simulation.reset()
 
-        return self._get_observation() , info
+        return self._get_observation(reset=True) , info
 
     def render(self):
         pass
