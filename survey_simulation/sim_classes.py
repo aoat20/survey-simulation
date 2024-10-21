@@ -723,7 +723,7 @@ class GriddedData:
     def reset(self,
               agent_xy):
         # Initialise agent grid
-        self.agent = agent_xy
+        self.add_agent_pos(agent_xy)
 
         # Initialise coverage map
         self.cov_map = [np.zeros(self.cov_map[0].shape,
