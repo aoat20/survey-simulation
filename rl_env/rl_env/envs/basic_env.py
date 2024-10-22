@@ -124,10 +124,6 @@ class BasicEnv(gym.Env):
         else:
             t, agent_pos, occ_map, cov_map, cts = self.survey_simulation.next_step()
 
-
-        print (np.array(occ_map).shape,np.array( cov_map).shape, np.array(agent_pos).shape)
-
-
         #for now just return the time step we will add more later
 
         if self.obs_type == 'time_only':

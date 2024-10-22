@@ -2,7 +2,8 @@ import gymnasium as gym
 import rl_env
 from stable_baselines3 import PPO
 
-MODEL_PATH = '/Users/edwardclark/Documents/SURREY/models/tmjaxm1s/model.zip'
+# MODEL_PATH = '/Users/edwardclark/Documents/SURREY/models/tmjaxm1s/model.zip'
+MODEL_PATH = '/Users/edwardclark/Documents/SURREY/survey-simulation/models/5hixnng4/model.zip'
 VIS_STEPS = 1000
 
 #create env 

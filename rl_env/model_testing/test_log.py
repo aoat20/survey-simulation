@@ -3,8 +3,9 @@ from rl_env.utils.reward import RewardFunction
 
 # log_path = '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/model_testing/data/Episode7'
 
+log_path = '/Users/edwardclark/Documents/SURREY/data/Episode14'
 
-log_path ='/Users/edwardclark/Downloads/Episode4'
+# log_path ='/Users/edwardclark/Downloads/Episode4'
 
 reward = RewardFunction(type='log_file', log_file=log_path).get_reward()
 print (reward)

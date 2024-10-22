@@ -18,14 +18,14 @@ from survey_simulation import SurveySimulationGrid
 #         ss.reset()
 
 # Running playback
-# path = '/Users/edwardclark/Documents/SURREY/data/'
-path = '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/model_testing/data/'
+path = '/Users/edwardclark/Documents/SURREY/data/'
+# path = '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/model_testing/data/'
 
 
 #episode 4, 15
 ss = SurveySimulationGrid('playback', 
                             save_dir=path,
-                            ep_n=7,
+                            ep_n=16,
                             plotter =1,
                             agent_viz = 1,
                             )
