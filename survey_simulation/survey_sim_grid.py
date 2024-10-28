@@ -56,6 +56,15 @@ class SurveySimulationGrid():
                 print('Overwriting the following parameters:')
                 fta = False
             print("%s = %s" % (key, value))
+            # check if it's a map parameter and if so remove other map parameters
+            if 'map' in key:
+                params = {key: val for key, val in params.items()
+                          if not 'map' in key}
+            # check if it's the start position and remove others
+            if 'start' in key:
+                params = {key: val for key, val in params.items()
+                          if not 'start' in key}
+                # Add parameter to dictionary
             params[key] = value
 
         self.msa = params['min_scan_angle_diff']
