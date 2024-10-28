@@ -46,6 +46,7 @@ class SurveySimulationGrid():
                 ep_dir = os.path.join(save_dir, "Episode"+str(ep_n))
             l_dir = os.listdir(ep_dir)
             p_path = [x for x in l_dir if 'META' in x][0]
+            map_path = [x for x in l_dir if 'MAP' in x][0]
             params = self.load_params(os.path.join(ep_dir, p_path))
 
         # Modify parameters from arguments
@@ -69,13 +70,24 @@ class SurveySimulationGrid():
         # Set up the map
         # if a default map is needed
         # else get the map from the location map_path
+        # else make a random map
         # else just make an empty space to move around in
-        if 'map_n' in params:
-            self.map_obj = Map(map_n=params['map_n'])
-        elif 'map_path' in params:
-            self.map_obj = Map(map_path=params['map_path'])
+        if mode == 'playback':
+            self.map_obj = Map(map_path=os.path.join(ep_dir, map_path))
         else:
-            self.map_obj = Map(map_lims=params['map_area_lims'])
+            if 'map_n' in params:
+                self.map_obj = Map(map_n=params['map_n'])
+            elif 'map_path' in params:
+                self.map_obj = Map(map_path=params['map_path'])
+            elif 'map_random' in params:
+                print('Random map being generated')
+                self.map_obj = Map(random_map=True)
+            else:
+                try:
+                    self.map_obj = Map(map_lims=params['map_area_lims'])
+                except:
+                    raise Exception('Need to include some map specification' +
+                                    ' (map_n, map_path, map_random or map_area_lims )')
 
         if mode == "playback":
             self.playback = Playback(ep_dir)
@@ -135,7 +147,8 @@ class SurveySimulationGrid():
                                  map_lims=self.map_obj.map_lims,
                                  params=params,
                                  gnd_trth=self.contacts.truth,
-                                 save_dir=save_dir)
+                                 save_dir=save_dir,
+                                 map_img=self.map_obj.img)
 
         if mode == "manual" or params['plotter']:
             self.plotter = SurveyPlotter(map_lims=self.map_obj.map_lims,
@@ -333,6 +346,9 @@ class SurveySimulationGrid():
         cts = self.griddata.cts
 
         return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
+
+    def prev_step(self):
+        pass
 
     def next_step_pb(self):
         # Get current action_id data and following step cov_map

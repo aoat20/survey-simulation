@@ -5,6 +5,7 @@ import shutil
 from survey_simulation.survey_classes import Detection
 from PIL import Image
 import random
+from matplotlib import cm
 
 
 class Agent:
@@ -166,8 +167,8 @@ class Agent:
 
 class Playback:
     """ Playback of survey data
-    Requires location of survey data, save_dir, 
-    containing files for ACTIONS, META, OBSERVATIONS and TRUTH, 
+    Requires location of survey data, save_dir,
+    containing files for ACTIONS, META, OBSERVATIONS and TRUTH,
     and a COVERAGE folder containing coverage maps
     """
 
@@ -358,7 +359,8 @@ class Logger:
                  map_lims,
                  params,
                  gnd_trth,
-                 save_dir) -> None:
+                 save_dir,
+                 map_img) -> None:
 
         self.save_dir = save_dir
         # initialse
@@ -376,6 +378,7 @@ class Logger:
         self.add_truth(gnd_trth)
         self.add_observation([], time_lim)
         self.add_meta(params)
+        self.add_map(map_img)
 
     def add_move(self, xy):
         x, y = xy[0], xy[1]
@@ -458,6 +461,9 @@ class Logger:
     def add_auxinfo(self, new_aux_info):
         self.aux_info.append(new_aux_info + '\n')
 
+    def add_map(self, map_img):
+        self.im = Image.fromarray(map_img)
+
     def save_data(self, ep_ID):
 
         if not ep_ID:
@@ -508,6 +514,10 @@ class Logger:
         f_aux = open(os.path.join(fold_dir, ep_str+'_AUX'), 'w')
         f_aux.writelines(self.aux_info)
 
+        # Save map
+        map_dir = os.path.join(fold_dir, ep_str+'_MAP.png')
+        self.im.save(map_dir)
+
     def reset(self,
               agent_start,
               new_contactstrth,
@@ -536,7 +546,8 @@ class Map:
     def __init__(self,
                  map_n="",
                  map_path="",
-                 map_lims=[0, 100, 0, 100]):
+                 map_lims=[0, 100, 0, 100],
+                 random_map=False):
 
         self.map_lims = map_lims
         self.occ = np.zeros((self.map_lims[3],
@@ -546,14 +557,22 @@ class Map:
         if map_n:
             self.map_n = map_n
             map_path = 'maps/Map'+str(map_n)+'.png'
+        elif random_map:
+            map_path = '-1'
+
         if map_path:
             self.setup(map_path)
         else:
             self.img = [0, 0]
 
-    def setup(self, map_path):
-        img = np.asarray(Image.open(map_path))
-        img_tmp = img[:, :, 0]
+    def setup(self, map_path=''):
+        if map_path != '-1':
+            im = Image.open(map_path)
+        else:
+            im = self.generate_random_map()
+        img = np.asarray(im)
+        # Check the alpha channel for transparency
+        img_tmp = img[:, :, 3]
         self.map_lims = (0, img_tmp.shape[1],
                          0, img_tmp.shape[0])
         self.occ = np.where(img_tmp == 0, 0, 1)
@@ -627,6 +646,157 @@ class Map:
             if self.occ[yout, xout]:
                 return 0
         return 1
+
+    def generate_perlin_noise_2d(self,
+                                 shape,
+                                 res):
+        """Generate a 2D numpy array of perlin noise.
+
+        Args:
+            shape: The shape of the generated array (tuple of two ints).
+                This must be a multple of res.
+            res: The number of periods of noise to generate along each
+                axis (tuple of two ints). Note shape must be a multiple of
+                res.
+
+        Returns:
+            A numpy array of shape shape with the generated noise.
+
+        Raises:
+            ValueError: If shape is not a multiple of res.
+        """
+        delta = (res[0] / shape[0], res[1] / shape[1])
+        d = (shape[0] // res[0], shape[1] // res[1])
+        grid = np.mgrid[0:res[0]:delta[0], 0:res[1]:delta[1]]\
+            .transpose(1, 2, 0) % 1
+        # Gradients
+        angles = 2*np.pi*np.random.rand(res[0]+1, res[1]+1)
+        gradients = np.dstack((np.cos(angles), np.sin(angles)))
+        # Change to true if it needs to be tileable
+        if False:
+            gradients[-1, :] = gradients[0, :]
+        if False:
+            gradients[:, -1] = gradients[:, 0]
+        gradients = gradients.repeat(d[0], 0).repeat(d[1], 1)
+        g00 = gradients[:-d[0], :-d[1]]
+        g10 = gradients[d[0]:, :-d[1]]
+        g01 = gradients[:-d[0], d[1]:]
+        g11 = gradients[d[0]:, d[1]:]
+        # Ramps
+        n00 = np.sum(np.dstack((grid[:, :, 0], grid[:, :, 1])) * g00, 2)
+        n10 = np.sum(np.dstack((grid[:, :, 0]-1, grid[:, :, 1])) * g10, 2)
+        n01 = np.sum(np.dstack((grid[:, :, 0], grid[:, :, 1]-1)) * g01, 2)
+        n11 = np.sum(np.dstack((grid[:, :, 0]-1, grid[:, :, 1]-1)) * g11, 2)
+        # Interpolation
+        t = grid*grid*grid*(grid*(grid*6 - 15) + 10)
+        n0 = n00*(1-t[:, :, 0]) + t[:, :, 0]*n10
+        n1 = n01*(1-t[:, :, 0]) + t[:, :, 0]*n11
+        return np.sqrt(2)*((1-t[:, :, 1])*n0 + t[:, :, 1]*n1)
+
+    def is_valid(self, x, y, matrix, visited, m, n):
+        if (x < n and y < m and x >= 0 and y >= 0):
+            if (visited[x][y] == False and matrix[x][y] == 1):
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def find_blob_size(self, matrix: np.array):
+        dx = [0, 1, -1, 0]
+        dy = [1, 0, 0, -1]
+        m, n = matrix.shape
+
+        # stores information about  which cell
+        # are already visited in a particular BFS
+        visited = [[False for i in range(m)] for j in range(n)]
+
+        # Stores the final result grid
+        result = [[0 for i in range(m)] for j in range(n)]
+
+        # Stores the count of cells in
+        # the largest connected component
+        cnt = 0
+
+        mp = {}
+        mass_n = 0
+
+        # Iterate over every cell
+        for i in range(n):
+            for j in range(m):
+                if (visited[i][j] == False and matrix[i][j] == 1):
+                    cnt = 0
+                    mass_n += 1
+
+                    # Stores the indices of the matrix cells
+                    q = []
+
+                    # Mark the starting cell as visited
+                    # and push it into the queue
+                    q.append([i, j])
+                    visited[i][j] = True
+
+                    # Iterate while the queue
+                    # is not empty
+                    while (len(q) != 0):
+                        p = q[0]
+                        q = q[1:]
+                        x = p[0]
+                        y = p[1]
+                        cnt += 1
+
+                        # Go to the adjacent cells
+                        for i in range(4):
+                            newX = x + dx[i]
+                            newY = y + dy[i]
+
+                            if (self.is_valid(newX, newY, matrix, visited, m, n)):
+                                q.append([newX, newY])
+                                visited[newX][newY] = True
+                                result[newX][newY] = mass_n
+                    mp[mass_n] = cnt
+        return mp, np.array(result)
+
+    def generate_random_map(self,
+                            width=512,
+                            height=512,
+                            res=2,
+                            depth=0.3,
+                            crop=True,
+                            show_map=False):
+
+        # Example usage
+        success = False
+        while not success:
+            p_noise = self.generate_perlin_noise_2d((height, width),
+                                                    (res, res))
+            p_temp = p_noise > depth
+
+            cnt_mp, cnt_area = self.find_blob_size(p_temp)
+            if len(cnt_mp) > 0:
+                success = True
+                cnt_mx = max(cnt_mp, key=cnt_mp.get)
+
+                mp_tmp = np.ones(p_temp.shape)
+                # Get just the biggest area
+                mp_tmp[cnt_area == cnt_mx] = np.nan
+                if crop:
+                    # Crop the rest of the image out
+                    mp_mm_i = np.where(np.isnan(mp_tmp))
+                    x_min = min(mp_mm_i[0])
+                    x_max = max(mp_mm_i[0])
+                    y_min = min(mp_mm_i[1])
+                    y_max = max(mp_mm_i[1])
+                    mp_out = mp_tmp[x_min:x_max, y_min:y_max]
+                else:
+                    mp_out = mp_tmp
+
+                # Convert it to a green image
+                im = Image.fromarray(cm.Greens(mp_out, bytes=True),
+                                     mode='RGBA')
+                if show_map:
+                    im.show()
+        return im
 
 
 class GriddedData:
