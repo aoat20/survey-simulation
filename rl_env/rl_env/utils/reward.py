@@ -85,14 +85,14 @@ class RewardFunction():
             running = True
             while running :
                 running = self.survey_simulation.playback_step()
-                reward += self._get_live_reward()
+                reward += self._get_live_reward(**kwargs)
             return reward
 
         else:
             i = 0
             while  i < survey_end:
                 running = self.survey_simulation.playback_step()
-                reward += self._get_live_reward()
+                reward += self._get_live_reward(**kwargs)
                 i += 1
                 if not running:
                     print ('Survey ended before requested step')
@@ -100,8 +100,6 @@ class RewardFunction():
             return reward
                 
         #calculate the reward up to requested step or end of survey
-
-        return NotImplementedError('Implement this method to get reward from log file')
 
 
 """
@@ -136,12 +134,19 @@ def default_reward_function(survey_simulation: SurveySimulationGrid, step_scale=
     '''
     Default reward function for the RL environment
     step scale is the scale of the reward for current path reward
-    '''
-    cov_map_non_zero = np.count_nonzero(~np.isnan(survey_simulation.covmap.map_stack),
+    # '''
+    # cov_map_non_zero = np.count_nonzero(~np.isnan(survey_simulation.covmap.map_stack),
+    #                                     axis=0)
+    # reward = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
+    
+    # print (survey_simulation.griddata.cov_map)
+    cov_map_non_zero = np.count_nonzero(np.array(survey_simulation.griddata.cov_map),
                                         axis=0)
     reward = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
+    print ('cov reward',reward)
     step_reward =survey_simulation.agent.get_current_path_len() / step_scale
     reward += step_reward
+    print ('step reward',step_reward)
     return reward
 
 

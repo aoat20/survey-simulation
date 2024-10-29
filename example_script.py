@@ -25,7 +25,7 @@ path = '/Users/edwardclark/Documents/SURREY/data/'
 #episode 4, 15
 ss = SurveySimulationGrid('playback', 
                             save_dir=path,
-                            ep_n=16,
+                            ep_n=53,
                             plotter =1,
-                            agent_viz = 1,
+                            agent_viz = 0,
                             )
