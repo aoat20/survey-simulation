@@ -758,8 +758,8 @@ class Map:
         return mp, np.array(result)
 
     def generate_random_map(self,
-                            width=512,
-                            height=512,
+                            width=256,
+                            height=256,
                             res=2,
                             depth=0.3,
                             crop=True,
