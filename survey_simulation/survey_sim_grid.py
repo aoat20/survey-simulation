@@ -107,23 +107,27 @@ class SurveySimulationGrid():
             agent_start = d_temp[1]
         elif params.get('random_start') == 1:
             # Random start anywhere
-            agent_start = self.map_obj.random_start()
+            self.map_obj.ag_st_mode = 2
         elif params.get('random_start') == 2:
             # Random start edges
-            agent_start = self.map_obj.random_start_edges()
+            self.map_obj.ag_st_mode = 3
         else:
             # use specified start if available, else default for map
             if 'agent_start' in params:
-                agent_start = params['agent_start']
+                self.map_obj.ag_st_mode = 1
+                self.map_obj.agent_st = params['agent_start']
             else:
-                agent_start = self.map_obj.default_start()
+                self.map_obj.ag_st_mode = 0
+
+        agent_start = self.map_obj.get_agent_start()
 
         # Get t step and grid spacing
         self.agent = Agent(xy_start=agent_start,
                            speed=params['agent_speed'],
                            scan_thr=params['scan_thr'])
         # Check if agent start position is in the map bounds
-        self.map_obj.is_occupied(self.agent.xy)
+        if self.map_obj.is_occupied(self.agent.xy):
+            raise Exception("Agent position is not valid")
         self.contacts = ContactDetections(loc_uncertainty=params['loc_uncertainty'],
                                           n_targets=params['n_targets'],
                                           det_probs=params['det_probs'],
@@ -438,9 +442,12 @@ class SurveySimulationGrid():
         return x, y
 
     def reset(self):
+        self.map_obj.setup()
         self.contacts.generate_targets(self.map_obj.occ)
         # reinitialise everything
-        self.agent.reset()
+        # get new st positions
+        ag_st = self.map_obj.get_agent_start()
+        self.agent.reset(new_st_pos=ag_st)
         self.covmap.reset()
         self.contacts.reset()
         self.timer.reset()
@@ -450,7 +457,9 @@ class SurveySimulationGrid():
                           self.timer.time_lim)
         self.griddata.reset(agent_xy=self.agent.xy)
         if hasattr(self, 'plotter'):
-            self.plotter.reset()
+            self.plotter.reset(new_agent_start=self.agent.xy,
+                               new_map_lims=self.map_obj.map_lims,
+                               new_map_img=self.map_obj.img)
         self.end_episode = False
 
     def save_episode(self, ep_n=None):

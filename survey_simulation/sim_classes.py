@@ -6,6 +6,8 @@ from survey_simulation.survey_classes import Detection
 from PIL import Image
 import random
 from matplotlib import cm
+from itertools import permutations
+import matplotlib.pyplot as plt
 
 
 class Agent:
@@ -20,17 +22,11 @@ class Agent:
         self.course0 = course
         self.course = course
         self.xy_start_candidates = xy_start
-        if type(xy_start[0]) is float:
-            xy_st = xy_start
-        else:
-            rnd_n = random.randint(0, len(xy_start[0])-1)
-            xy_st = [xy_start[1][rnd_n],
-                     xy_start[0][rnd_n]]
 
-        self.xy = xy_st
-        self.xy_hist = [np.array(xy_st)]
+        self.xy = self.xy_st_pos()
+        self.xy_hist = [np.array(self.xy)]
         self.xy_step = [0, 0]
-        self.destination = xy_st
+        self.destination = self.xy
         self.distance_dest = np.inf
         self.distance_travelled = 0
 
@@ -141,14 +137,7 @@ class Agent:
         else:
             return None
 
-    def reset(self):
-        self.course = self.course0
-        if self.course0 is None:
-            self.speed = 0
-        else:
-            self.speed = self.speed0
-            self.compute_movement_step()
-
+    def xy_st_pos(self):
         if type(self.xy_start_candidates[0]) is float:
             xy_st = self.xy_start_candidates
         else:
@@ -156,7 +145,21 @@ class Agent:
             xy_st = [self.xy_start_candidates[1][rnd_n],
                      self.xy_start_candidates[0][rnd_n]]
 
-        self.xy = xy_st
+        return xy_st
+
+    def reset(self,
+              new_st_pos=[]):
+
+        self.xy_start_candidates = new_st_pos
+
+        self.course = self.course0
+        if self.course0 is None:
+            self.speed = 0
+        else:
+            self.speed = self.speed0
+            self.compute_movement_step()
+
+        self.xy = self.xy_st_pos()
         self.xy_hist = [np.array(self.xy)]
         self.xy_leg0 = self.xy
         self.destination = [0, 0]
@@ -549,34 +552,37 @@ class Map:
                  map_lims=[0, 100, 0, 100],
                  random_map=False):
 
+        self.ag_st_mode = 0
         self.map_lims = map_lims
-        self.occ = np.zeros((self.map_lims[3],
-                             self.map_lims[1]))
+
+        self.map_path = map_path
 
         # if map_n or map path exists, load map and parameters
         if map_n:
             self.map_n = map_n
-            map_path = 'maps/Map'+str(map_n)+'.png'
+            self.map_path = 'maps/Map'+str(map_n)+'.png'
         elif random_map:
-            map_path = '-1'
+            self.map_path = '-1'
 
-        if map_path:
-            self.setup(map_path)
-        else:
+        self.setup()
+
+    def setup(self):
+        if self.map_path == '':
+            self.occ = np.zeros((self.map_lims[3],
+                                 self.map_lims[1]))
             self.img = [0, 0]
-
-    def setup(self, map_path=''):
-        if map_path != '-1':
-            im = Image.open(map_path)
         else:
-            im = self.generate_random_map()
-        img = np.asarray(im)
-        # Check the alpha channel for transparency
-        img_tmp = img[:, :, 3]
-        self.map_lims = (0, img_tmp.shape[1],
-                         0, img_tmp.shape[0])
-        self.occ = np.where(img_tmp == 0, 0, 1)
-        self.img = img
+            if self.map_path != '-1':
+                im = Image.open(self.map_path)
+            else:
+                im = self.generate_random_map()
+            img = np.asarray(im)
+            # Check the alpha channel for transparency
+            img_tmp = img[:, :, 3]
+            self.map_lims = (0, img_tmp.shape[1],
+                             0, img_tmp.shape[0])
+            self.occ = np.where(img_tmp == 0, 0, 1)
+            self.img = img
 
     def is_occupied(self, xy):
         ml = self.map_lims
@@ -591,7 +597,20 @@ class Map:
             raise Exception(
                 "agent position is an occupied coordinate of the map")
 
+    def get_agent_start(self):
+        if self.ag_st_mode == 0:
+            ag_st = self.default_start()
+        elif self.ag_st_mode == 1:
+            ag_st = self.agent_st
+        elif self.ag_st_mode == 2:
+            ag_st = self.random_start()
+        elif self.ag_st_mode == 3:
+            ag_st = self.random_start_edges()
+
+        return ag_st
+
     def default_start(self):
+        # self.ag_st_mode = 0
         # default positions for the agent based on the map
         def_starts = ((58., 192.),
                       (33., 56.),
@@ -602,13 +621,30 @@ class Map:
             raise Exception("You need to specify an agent_start position")
 
     def random_start(self):
+        # self.ag_st_mode = 2
         coords_unocc = np.where(self.occ == 0)
         return coords_unocc
 
     def random_start_edges(self):
-        coords_edge = np.concatenate((np.where(np.diff(self.occ, 1, 0)),
-                                      np.where(np.diff(self.occ, 1, 1))), 1)
-        return coords_edge
+        # self.ag_st_mode = 3
+        dxy_surr = np.unique([xy for xy in permutations([-1, -1, 0, 1, 1], 2)],
+                             axis=0)
+        coords_unocc = np.transpose(np.where(self.occ == 0))
+        coords_edge = []
+        for xy in coords_unocc:
+            # if it's not at the edge of the map already
+            if (xy[0] > self.map_lims[0]+2
+                    and xy[0] < self.map_lims[1]-2
+                    and xy[1] > self.map_lims[2]+2
+                    and xy[1] < self.map_lims[3]-2):
+                # check each surrounding pixel for land
+                xy_surr = xy+dxy_surr
+                if any([self.occ[x, y] for x, y in xy_surr]):
+                    coords_edge.append(xy)
+
+        coords_edge_np = np.transpose(np.array(coords_edge))
+
+        return coords_edge_np
 
     def check_path(self,
                    x1i,
@@ -762,8 +798,9 @@ class Map:
                             height=256,
                             res=2,
                             depth=0.3,
-                            crop=True,
-                            show_map=False):
+                            crop=False,
+                            show_map=False,
+                            min_area=8000):
 
         # Example usage
         success = False
@@ -774,28 +811,28 @@ class Map:
 
             cnt_mp, cnt_area = self.find_blob_size(p_temp)
             if len(cnt_mp) > 0:
-                success = True
                 cnt_mx = max(cnt_mp, key=cnt_mp.get)
+                if (cnt_mp[cnt_mx]) > min_area:
+                    success = True
+                    mp_tmp = np.ones(p_temp.shape)
+                    # Get just the biggest area
+                    mp_tmp[cnt_area == cnt_mx] = np.nan
+                    if crop:
+                        # Crop the rest of the image out
+                        mp_mm_i = np.where(np.isnan(mp_tmp))
+                        x_min = min(mp_mm_i[0])
+                        x_max = max(mp_mm_i[0])
+                        y_min = min(mp_mm_i[1])
+                        y_max = max(mp_mm_i[1])
+                        mp_out = mp_tmp[x_min:x_max, y_min:y_max]
+                    else:
+                        mp_out = mp_tmp
 
-                mp_tmp = np.ones(p_temp.shape)
-                # Get just the biggest area
-                mp_tmp[cnt_area == cnt_mx] = np.nan
-                if crop:
-                    # Crop the rest of the image out
-                    mp_mm_i = np.where(np.isnan(mp_tmp))
-                    x_min = min(mp_mm_i[0])
-                    x_max = max(mp_mm_i[0])
-                    y_min = min(mp_mm_i[1])
-                    y_max = max(mp_mm_i[1])
-                    mp_out = mp_tmp[x_min:x_max, y_min:y_max]
-                else:
-                    mp_out = mp_tmp
-
-                # Convert it to a green image
-                im = Image.fromarray(cm.Greens(mp_out, bytes=True),
-                                     mode='RGBA')
-                if show_map:
-                    im.show()
+                    # Convert it to a green image
+                    im = Image.fromarray(cm.Greens(mp_out, bytes=True),
+                                         mode='RGBA')
+                    if show_map:
+                        im.show()
         return im
 
 
