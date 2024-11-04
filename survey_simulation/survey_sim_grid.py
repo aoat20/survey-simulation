@@ -119,7 +119,8 @@ class SurveySimulationGrid():
             else:
                 self.map_obj.ag_st_mode = 0
 
-        agent_start = self.map_obj.get_agent_start()
+        if mode != 'playback':
+            agent_start = self.map_obj.get_agent_start()
 
         # Get t step and grid spacing
         self.agent = Agent(xy_start=agent_start,
