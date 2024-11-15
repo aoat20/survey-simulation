@@ -22,20 +22,22 @@ class Plotter:
         self.fig.canvas.draw_idle()
         plt.pause(0.0001)
 
-    def setup_plot(self,
-                   map_lims):
+    def setup_plot(self):
         # set up empty plot
         self.fig, self.ax = plt.subplots()
-        self.ax.set_xlim(xmin=map_lims[0],
-                         xmax=map_lims[1])
-        self.ax.set_ylim(ymin=map_lims[2],
-                         ymax=map_lims[3])
+
+    def set_map_lims(self,
+                     map_lims):
         self.ax.grid(color='lightgray',
                      linestyle='-',
                      linewidth=0.2)
         self.ax.set_axisbelow(True)
         self.ax.set_xlabel('Easting, m')
         self.ax.set_ylabel('Northing, m')
+        self.ax.set_xlim(xmin=map_lims[0],
+                         xmax=map_lims[1])
+        self.ax.set_ylim(ymin=map_lims[2],
+                         ymax=map_lims[3])
 
     def setup_map(self, map_img):
         # get the map image and show
@@ -355,9 +357,9 @@ class SurveyPlotter(Plotter):
         self.setup()
 
     def setup(self):
-
         # setup things
-        self.setup_plot(self.ml)
+        self.setup_plot()
+        self.set_map_lims(self.ml)
         self.setup_map(self.mi)
 
         self.agent_plt = self.AgentPlot(ax=self.ax,
@@ -370,7 +372,8 @@ class SurveyPlotter(Plotter):
         self.setup_scantemp(self.ll,
                             self.ms,
                             self.sw)
-        self.updatetime(self.tl, self.tl)
+        self.updatetime(self.tl,
+                        self.tl)
         self.draw()
 
     def update_plots(self,
@@ -388,18 +391,26 @@ class SurveyPlotter(Plotter):
         # self.plotter.remove_temp()
         self.draw()
 
-    def reset(self):
-        self.agent_plt.updateagent(self.xy0)
-        self.agent_plt.track_hist_plt.set_data((self.xy0[0],
-                                                self.xy0[1]))
+    def reset(self,
+              new_agent_start=[],
+              new_map_lims=[],
+              new_map_img=[]):
+        self.ax.cla()
+        self.set_map_lims(new_map_lims)
+        self.setup_map(new_map_img)
 
-        self.updatecontacts([])
-        self.cov_plt.set_data(np.zeros((self.ml[3],
-                                        self.ml[1],
-                                        3)))
-        self.det_cls_plt.set_data([], [])
-        self.det_grp_plt.set_data([], [])
-        self.targ_plt.set_data([], [])
+        self.agent_plt = self.AgentPlot(ax=self.ax,
+                                        xy0=new_agent_start)
+        self.setup_scantemp(self.ll,
+                            self.ms,
+                            self.sw)
+
+        self.setup_contacts()
+        self.setup_covmap(new_map_lims,
+                          self.msa,
+                          self.na,
+                          self.nl)
+
         self.updatetime(self.tl, self.tl)
 
 
