@@ -570,7 +570,8 @@ class Map:
         if self.map_path == '':
             self.occ = np.zeros((self.map_lims[3],
                                  self.map_lims[1]))
-            self.img = [0, 0]
+            self.img = np.zeros((self.map_lims[3],
+                                 self.map_lims[1]))
         else:
             if self.map_path != '-1':
                 im = Image.open(self.map_path)
