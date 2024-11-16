@@ -143,10 +143,10 @@ def default_reward_function(survey_simulation: SurveySimulationGrid, step_scale=
     cov_map_non_zero = np.count_nonzero(np.array(survey_simulation.griddata.cov_map),
                                         axis=0)
     reward = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
-    print ('cov reward',reward)
+    # print ('cov reward',reward)
     step_reward =survey_simulation.agent.get_current_path_len() / step_scale
     reward += step_reward
-    print ('step reward',step_reward)
+    # print ('step reward',step_reward)
     return reward
 
 

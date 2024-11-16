@@ -1,1 +1,3 @@
 gymnasium
+wandb
+stable-baselines3
