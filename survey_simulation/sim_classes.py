@@ -1,10 +1,14 @@
 import math
 import os
 import random
+import shutil
 from itertools import permutations
 
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import cm
+from PIL import Image
+from survey_simulation.survey_classes import Detection
 
 
 class Agent:
