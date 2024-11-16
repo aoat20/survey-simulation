@@ -26,7 +26,11 @@ path = '/Users/edward/Documents/university/coding/survey-simulation/data/'
 #episode 4, 15
 ss = SurveySimulationGrid('playback', 
                             save_dir=path,
+<<<<<<< HEAD
                             ep_n=3,
+=======
+                            ep_n=87,
+>>>>>>> 567a1849f7aa5bca1ffd43e0007c676beba7ee9a
                             plotter =1,
                             agent_viz = 0,
                             )
