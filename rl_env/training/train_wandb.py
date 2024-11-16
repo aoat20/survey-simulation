@@ -6,18 +6,27 @@ from wandb.integration.sb3 import WandbCallback
 
 import wandb
 
+
+
+
+
+RE_TRAIN_MODEL = False
+MODEL_PATH ='/Users/edward/Downloads/model.zip'
+
+
+
 if __name__ == "__main__":
 
 
-    N_ENVS = 4
+    N_ENVS = 6
 
     config = {
         "policy_type": "CnnPolicy",
-        "total_timesteps": 20e6,
+        "total_timesteps": 50e6,
         "env_name": "BasicEnv-v0",
     }
     run = wandb.init(
-        project="sb3",
+        project="surrey",
         config=config,
         sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
         monitor_gym=True,  # auto-upload the videos of agents playing the game
@@ -29,7 +38,7 @@ if __name__ == "__main__":
 
 
     env_kwargs = {
-            'params_filepath': '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/params.txt',
+            'params_filepath': '/Users/edward/Documents/university/coding/survey-simulation/rl_env/params.txt',
             'save_logs': False,
             'obs_type': 'coverage_occupancy'
         }
@@ -55,7 +64,12 @@ if __name__ == "__main__":
         'normalize_images':False,
     }
 
-    model = PPO(config['policy_type'], env, verbose = 1,tensorboard_log=f"runs/{run.id}", policy_kwargs=policy_kwargs,device= 'mps',  **kwargs)
+    if RE_TRAIN_MODEL:
+        
+        model = PPO.load(MODEL_PATH, env, verbose = 1,tensorboard_log=f"runs/{run.id}", policy_kwargs=policy_kwargs,device= 'mps',  **kwargs)
+    else:
+        model = PPO(config['policy_type'], env, verbose = 1,tensorboard_log=f"runs/{run.id}", policy_kwargs=policy_kwargs,device= 'mps',  **kwargs)
+
 
     model.learn(total_timesteps=config['total_timesteps'],
             callback=WandbCallback(

@@ -1,8 +1,12 @@
 Metadata-Version: 2.1
-Name: rl_env
+Name: rl-env
 Version: 0.1
 Summary: A custom RL environment package
+Home-page: UNKNOWN
 Author: Alfie Anthony Treloar and Edward Clark
 Author-email: eprc20@bath.ac.uk
 License: Not yet licensed
-Requires-Dist: gymnasium
+Platform: UNKNOWN
+
+UNKNOWN
+

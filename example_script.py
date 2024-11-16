@@ -18,7 +18,8 @@ from survey_simulation import SurveySimulationGrid
 #         ss.reset()
 
 # Running playback
-path = '/Users/edwardclark/Documents/SURREY/data/'
+# path = '/Users/edwardclark/Documents/SURREY/data/'
+path = '/Users/edward/Documents/university/coding/survey-simulation/data/'
 # path = '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/model_testing/data/'
 
 
