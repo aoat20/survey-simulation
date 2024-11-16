@@ -140,7 +140,6 @@ def default_reward_function(survey_simulation: SurveySimulationGrid, step_scale=
     # reward = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
     
     # print (survey_simulation.griddata.cov_map)
-<<<<<<< HEAD
     cov_map_non_zero = np.count_nonzero(np.array(survey_simulation.griddata.cov_map),
                                         axis=0)
     reward = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
@@ -148,12 +147,6 @@ def default_reward_function(survey_simulation: SurveySimulationGrid, step_scale=
     step_reward =survey_simulation.agent.get_current_path_len() / step_scale
     reward += step_reward
     # print ('step reward',step_reward)
-=======
-    cov_map_non_zero = np.count_nonzero(survey_simulation.griddata.cov_map[0])
-    reward = cov_map_non_zero / survey_simulation.griddata.cov_map[0].size
-    step_reward =survey_simulation.agent.get_current_path_len() / step_scale
-    reward += step_reward
->>>>>>> 567a1849f7aa5bca1ffd43e0007c676beba7ee9a
     return reward
 
 
