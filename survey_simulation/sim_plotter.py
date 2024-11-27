@@ -178,6 +178,19 @@ class Plotter:
         self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(t_remaining,
                                                                         self.tl))
 
+    def update_rewards(self,
+                       current_reward: float,
+                       final_reward: float = 0):
+        if hasattr(self, 'rew_text'):
+            self.rew_text.remove()
+
+        self.rew_text = plt.text(0.05,
+                                 0.95,
+                                 "Reward: {:.1f}/{:.1f}".format(current_reward,
+                                                                final_reward),
+                                 fontsize=14,
+                                 transform=plt.gcf().transFigure)
+
     def updateps(self, playspeed):
         self.ax.set_title("Playspeed: {:.0f}x".format(playspeed))
 
