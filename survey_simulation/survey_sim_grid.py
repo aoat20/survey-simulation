@@ -4,6 +4,7 @@ import time
 from survey_simulation.sim_plotter import SurveyPlotter, AgentViz
 from survey_simulation.survey_classes import ContactDetections, CoverageMap
 from survey_simulation.sim_classes import Timer, Playback, Logger, Map, Agent, GriddedData
+from survey_simulation.reward import RewardFunction
 import matplotlib.pyplot as plt
 
 
@@ -44,8 +45,10 @@ class SurveySimulationGrid():
                 ep_dir = log_file
             else:
                 ep_dir = os.path.join(save_dir, "Episode"+str(ep_n))
+            print('Loading log file: '+ep_dir)
             l_dir = os.listdir(ep_dir)
             p_path = [x for x in l_dir if 'META' in x][0]
+            map_path = [x for x in l_dir if 'MAP' in x][0]
             params = self.load_params(os.path.join(ep_dir, p_path))
 
         # Modify parameters from arguments
@@ -55,6 +58,15 @@ class SurveySimulationGrid():
                 print('Overwriting the following parameters:')
                 fta = False
             print("%s = %s" % (key, value))
+            # check if it's a map parameter and if so remove other map parameters
+            if 'map' in key:
+                params = {key: val for key, val in params.items()
+                          if not 'map' in key}
+            # check if it's the start position and remove others
+            if 'start' in key:
+                params = {key: val for key, val in params.items()
+                          if not 'start' in key}
+                # Add parameter to dictionary
             params[key] = value
 
         self.msa = params['min_scan_angle_diff']
@@ -69,13 +81,24 @@ class SurveySimulationGrid():
         # Set up the map
         # if a default map is needed
         # else get the map from the location map_path
+        # else make a random map
         # else just make an empty space to move around in
-        if 'map_n' in params:
-            self.map_obj = Map(map_n=params['map_n'])
-        elif 'map_path' in params:
-            self.map_obj = Map(map_path=params['map_path'])
+        if mode == 'playback':
+            self.map_obj = Map(map_path=os.path.join(ep_dir, map_path))
         else:
-            self.map_obj = Map(map_lims=params['map_area_lims'])
+            if 'map_n' in params:
+                self.map_obj = Map(map_n=params['map_n'])
+            elif 'map_path' in params:
+                self.map_obj = Map(map_path=params['map_path'])
+            elif 'map_random' in params:
+                print('Random map being generated')
+                self.map_obj = Map(random_map=True)
+            else:
+                try:
+                    self.map_obj = Map(map_lims=params['map_area_lims'])
+                except:
+                    raise Exception('Need to include some map specification' +
+                                    ' (map_n, map_path, map_random or map_area_lims )')
 
         if mode == "playback":
             self.playback = Playback(ep_dir)
@@ -86,23 +109,28 @@ class SurveySimulationGrid():
             agent_start = d_temp[1]
         elif params.get('random_start') == 1:
             # Random start anywhere
-            agent_start = self.map_obj.random_start()
+            self.map_obj.ag_st_mode = 2
         elif params.get('random_start') == 2:
             # Random start edges
-            agent_start = self.map_obj.random_start_edges()
+            self.map_obj.ag_st_mode = 3
         else:
             # use specified start if available, else default for map
             if 'agent_start' in params:
-                agent_start = params['agent_start']
+                self.map_obj.ag_st_mode = 1
+                self.map_obj.agent_st = params['agent_start']
             else:
-                agent_start = self.map_obj.default_start()
+                self.map_obj.ag_st_mode = 0
+
+        if mode != 'playback':
+            agent_start = self.map_obj.get_agent_start()
 
         # Get t step and grid spacing
         self.agent = Agent(xy_start=agent_start,
                            speed=params['agent_speed'],
                            scan_thr=params['scan_thr'])
         # Check if agent start position is in the map bounds
-        self.map_obj.is_occupied(self.agent.xy)
+        if self.map_obj.is_occupied(self.agent.xy):
+            raise Exception("Agent position is not valid")
         self.contacts = ContactDetections(loc_uncertainty=params['loc_uncertainty'],
                                           n_targets=params['n_targets'],
                                           det_probs=params['det_probs'],
@@ -118,9 +146,14 @@ class SurveySimulationGrid():
 
         self.griddata = GriddedData(map_lims=self.map_obj.map_lims,
                                     angle_diff=params['min_scan_angle_diff'],
-                                    occ_map=self.map_obj.occ)
+                                    occ_map=self.map_obj.occ,
+                                    agent_xy=self.agent.xy)
         self.timer = Timer(params['time_lim'],
                            params['t_step'])
+        self.reward = RewardFunction()
+
+        if mode == 'playback':
+            self.run_to_end()
 
         if params.get('agent_viz'):
             self.agent_viz = AgentViz(map_dims=self.map_obj.map_lims,
@@ -135,7 +168,8 @@ class SurveySimulationGrid():
                                  map_lims=self.map_obj.map_lims,
                                  params=params,
                                  gnd_trth=self.contacts.truth,
-                                 save_dir=save_dir)
+                                 save_dir=save_dir,
+                                 map_img=self.map_obj.img)
 
         if mode == "manual" or params['plotter']:
             self.plotter = SurveyPlotter(map_lims=self.map_obj.map_lims,
@@ -201,6 +235,26 @@ class SurveySimulationGrid():
             self.action_id += 1
             self.next_step_pb()
             return 1
+
+    def get_reward(self):
+        # Get all the observations for the rewards function
+        obs_dict = {'cov_map': self.griddata.cov_map,
+                    'path_length': self.agent.get_current_path_len()}
+        return self.reward.get_reward(obs_dict=obs_dict)
+
+    def run_to_end(self):
+        running = True
+        while running:
+            running = self.playback_step()
+            self.get_reward()
+
+        self.run_to_start()
+
+    def run_to_start(self):
+        while self.action_id > 0:
+            self.action_id -= 1
+            self.next_step_pb()
+        self.griddata.reset()
 
     def load_params(self,
                     param_file: str):
@@ -303,6 +357,19 @@ class SurveySimulationGrid():
                         self.griddata.add_contacts(
                             [self.contacts.detections[-n_dets]])
 
+        ag_pos = self.griddata.agent
+        occ_map = self.griddata.occ_map
+        cov_map = self.griddata.cov_map
+        cts = self.griddata.cts
+
+        self.get_reward()
+
+        if hasattr(self, 'agent_viz'):
+            self.agent_viz.update(ag_pos,
+                                  occ_map,
+                                  cov_map[0],
+                                  cts)
+
         if hasattr(self, 'plotter'):
             if success:
                 self.plotter.updatecovmap(self.griddata.cov_map)
@@ -310,17 +377,7 @@ class SurveySimulationGrid():
                                       self.agent.xy,
                                       self.agent.xy_hist,
                                       self.timer.time_remaining)
-
-        ag_pos = self.griddata.agent
-        occ_map = self.griddata.occ_map
-        cov_map = self.griddata.cov_map
-        cts = self.griddata.cts
-
-        if hasattr(self, 'agent_viz'):
-            self.agent_viz.update(ag_pos,
-                                  occ_map,
-                                  cov_map[0],
-                                  cts)
+            self.plotter.update_rewards(self.reward.rewards[-1])
 
         self.check_termination()
 
@@ -333,6 +390,9 @@ class SurveySimulationGrid():
         cts = self.griddata.cts
 
         return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
+
+    def prev_step(self):
+        pass
 
     def next_step_pb(self):
         # Get current action_id data and following step cov_map
@@ -372,6 +432,8 @@ class SurveySimulationGrid():
             self.plotter.updatecovmap(self.griddata.cov_map)
             self.plotter.updatecontacts(cn)
             self.plotter.updategroups(grps)
+            self.plotter.update_rewards(self.reward.rewards[self.action_id],
+                                        self.reward.rewards[-1])
             self.plotter.draw()
 
         if hasattr(self, 'agent_viz'):
@@ -413,9 +475,12 @@ class SurveySimulationGrid():
         return x, y
 
     def reset(self):
+        self.map_obj.setup()
         self.contacts.generate_targets(self.map_obj.occ)
         # reinitialise everything
-        self.agent.reset()
+        # get new st positions
+        ag_st = self.map_obj.get_agent_start()
+        self.agent.reset(new_st_pos=ag_st)
         self.covmap.reset()
         self.contacts.reset()
         self.timer.reset()
@@ -424,8 +489,11 @@ class SurveySimulationGrid():
                           self.map_obj.map_lims,
                           self.timer.time_lim)
         self.griddata.reset(agent_xy=self.agent.xy)
+        self.reward.reset()
         if hasattr(self, 'plotter'):
-            self.plotter.reset()
+            self.plotter.reset(new_agent_start=self.agent.xy,
+                               new_map_lims=self.map_obj.map_lims,
+                               new_map_img=self.map_obj.img)
         self.end_episode = False
 
     def save_episode(self, ep_n=None):

@@ -7,7 +7,7 @@ plotter: 1
 agent_viz: 0
 
 # Agent properties
-random_start: 0
+random_start: 1
 #agent_start: (100., 60.) 
 scan_width: 20.
 leadinleadout: 5.
@@ -17,6 +17,7 @@ agent_speed: 5.
 scan_thr: 2
 
 # Map properties
+#map_random: 1
 map_n: 2
 #map_path: "maps/Map1.png"
 map_area_lims: (0, 200, 0, 120) 
