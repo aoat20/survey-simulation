@@ -67,16 +67,18 @@ class Agent:
                                  [np.array(self.xy)],
                                  axis=0)
 
-    def rewind_one_step(self,
-                        t_elapsed):
-        self.distance_travelled -= self.speed*t_elapsed
-
-        self.xy = [self.xy[0]-self.xy_step[0]*t_elapsed,
-                   self.xy[1]-self.xy_step[1]*t_elapsed]
-
-        self.xy_hist = self.xy_hist[:-1]
+    def rewind_one_step(self):
+        # Change to the previous positin
+        self.xy = self.xy_hist[-1, :]
+        self.xy_hist = self.xy_hist[:-1, :]
+        # check whether there's a previous coverage map that needs removed
         if len(self.xy_hist) <= self.ind0:
             self.ind0 = self.ind0_hist.pop()
+            if self.ind0 == 0:
+                self.ind0_hist = [0]
+            return True
+        else:
+            return False
 
     def destination_req(self,
                         xy):
