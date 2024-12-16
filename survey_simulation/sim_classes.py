@@ -40,6 +40,7 @@ class Agent:
 
         # scan straightness threshold and index
         self.ind0 = 0
+        self.ind0_hist = [0]
         self.scan_thr = scan_thr
 
     def move_to_position(self,
@@ -66,6 +67,17 @@ class Agent:
         self.xy_hist = np.append(self.xy_hist,
                                  [np.array(self.xy)],
                                  axis=0)
+
+    def rewind_one_step(self,
+                        t_elapsed):
+        self.distance_travelled -= self.speed*t_elapsed
+
+        self.xy = [self.xy[0]-self.xy_step[0]*t_elapsed,
+                   self.xy[1]-self.xy_step[1]*t_elapsed]
+
+        self.xy_hist = self.xy_hist[:-1]
+        if len(self.xy_hist) <= self.ind0:
+            self.ind0 = self.ind0_hist.pop()
 
     def destination_req(self,
                         xy):
@@ -132,6 +144,7 @@ class Agent:
             if max(d) > self.scan_thr or any(dxdy[0, :] != dxdy[1, :]):
                 ind0_out = self.ind0
                 self.ind0 = len(self.xy_hist)-2
+                self.ind0_hist.append(self.ind0)
                 return ind0_out
             else:
                 return None
@@ -844,12 +857,15 @@ class GriddedData:
     def __init__(self,
                  map_lims: list[int],
                  angle_diff: float,
-                 occ_map) -> None:
+                 occ_map,
+                 agent_xy) -> None:
         # Initialise agent grid
         self.agent = np.zeros((map_lims[3],
                                map_lims[1]),
                               dtype=int)
         self.occ_map = occ_map
+        self.agent_xy0 = agent_xy
+        self.add_agent_pos(agent_xy)
 
         # Initialise coverage map
         self.cov_map = [np.zeros((map_lims[3],
@@ -934,9 +950,12 @@ class GriddedData:
                          c_xy_rnd[0]] -= 1
 
     def reset(self,
-              agent_xy):
+              agent_xy=[]):
         # Initialise agent grid
-        self.add_agent_pos(agent_xy)
+        if agent_xy:
+            self.add_agent_pos(agent_xy)
+        else:
+            self.add_agent_pos(self.agent_xy0)
 
         # Initialise coverage map
         self.cov_map = [np.zeros(self.cov_map[0].shape,
