@@ -15,11 +15,11 @@ sweep_config = {
     },
     "parameters": {
         "n_steps": {"values": [256, 512, 1024]},
-        "n_epochs": {"values": [1, 2, 4, 8]},
+        "n_epochs": {"values": [1, 2, 4,8]},
         "batch_size": {"values": [256 , 512, 1024, 2048]},
         "gae_lambda": {"min": 0.8, "max": 1.0},
-        "learning_rate": {"min": 1e-5, "max": 1e-2, "distribution": "log_uniform_values"},
-        "clip_range": {"min": 0.1, "max": 0.4},
+        "learning_rate": {"min": 1e-6, "max": 1e-2, "distribution": "log_uniform_values"},
+        "clip_range": {"min": 0.05, "max": 0.4},
         "ent_coef": {"min": 0.0, "max": 0.1},
     },
 }
@@ -29,9 +29,9 @@ def train():
     run = wandb.init(sync_tensorboard=True, monitor_gym=True, save_code=True)
     config = wandb.config
 
-    N_ENVS = 2
+    N_ENVS = 6
     env_kwargs = {
-        'params_filepath': '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/params.txt',
+        'params_filepath': '/Users/edward/Documents/university/coding/survey-simulation/rl_env/params.txt',
         'save_logs': False,
         'obs_type': 'coverage_occupancy'
     }
@@ -66,7 +66,7 @@ def train():
 
     # Train the model
     model.learn(
-        total_timesteps=5e5,
+        total_timesteps=2e6,
         callback=WandbCallback(
             gradient_save_freq=10000,
             model_save_freq=int(100000 / N_ENVS),
@@ -80,4 +80,9 @@ def train():
 if __name__ == "__main__":
     # Initialize and run the sweep
     sweep_id = wandb.sweep(sweep_config, project="surrey")  # Create a sweep
-    wandb.agent(sweep_id, function=train, count=10)  # Run the sweep with 10 experiments
+    wandb.agent(sweep_id, function=train)  # Run the sweep with 10 experiments
+
+
+    # sweep_id = 'rxgk7rlr'
+    # wandb.agent(sweep_id, function=train,project='surrey')  # Run the sweep with 10 experiments
+

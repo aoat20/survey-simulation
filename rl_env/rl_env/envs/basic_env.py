@@ -40,7 +40,7 @@ class BasicEnv(gym.Env):
 
         self.survey_simulation = SurveySimulationGrid('test',
                                                       save_dir='data',
-                                                      params_filepath = params_filepath) #initialize the survey simulation in manual mode
+                                                      params_filepath = params_filepath) #initialize the survey simulation in test mode
         
         self.save_logs = kwargs.get('save_logs', False)
 

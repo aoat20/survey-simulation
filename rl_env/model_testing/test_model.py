@@ -6,11 +6,11 @@ from stable_baselines3 import PPO
 # MODEL_PATH = '/Users/edwardclark/Documents/SURREY/survey-simulation/models/5hixnng4/model.zip'
 # MODEL_PATH = '/Users/edwardclark/Desktop/ppo_model_server_86500000_steps.zip'
 # MODEL_PATH ='/Volumes/eprc20/ppo_model_server_9500000_steps.zip'
-MODEL_PATH = '/Users/edward/Downloads/model.zip'
+MODEL_PATH = '/Users/edward/Downloads/model (1).zip'
+# MODEL_PATH = '/Users/edward/Documents/university/coding/survey-simulation/wandb/run-20241118_205309-l8pi0a9i/files/model.zip'
 
-MODEL_PATH ='/Users/edwardclark/Downloads/model (1).zip'
+# MODEL_PATH ='/Users/edward/Downloads/latest.zip'
 VIS_STEPS = 3000
-
 #create env 
 
 env_kwargs = {
@@ -18,6 +18,17 @@ env_kwargs = {
         'save_logs': True,
         'obs_type': 'coverage_occupancy'
     }
+
+
+# # env_kwargs = {
+# #         'params_filepath': '/Users/edward/Documents/university/coding/survey-simulation/rl_env/training/initial_params.txt',
+# #         'save_logs': False,
+# #         'obs_type': 'coverage_occupancy',
+# #         'reward_kwargs':{
+# #             'reward_id':'rawpathreward',
+# #         }
+
+#     }
 
 env = gym.make('BasicEnv-v0', **env_kwargs)
 
