@@ -68,16 +68,18 @@ class Agent:
                                  [np.array(self.xy)],
                                  axis=0)
 
-    def rewind_one_step(self,
-                        t_elapsed):
-        self.distance_travelled -= self.speed*t_elapsed
-
-        self.xy = [self.xy[0]-self.xy_step[0]*t_elapsed,
-                   self.xy[1]-self.xy_step[1]*t_elapsed]
-
-        self.xy_hist = self.xy_hist[:-1]
+    def rewind_one_step(self):
+        # Change to the previous positin
+        self.xy = self.xy_hist[-1, :]
+        self.xy_hist = self.xy_hist[:-1, :]
+        # check whether there's a previous coverage map that needs removed
         if len(self.xy_hist) <= self.ind0:
             self.ind0 = self.ind0_hist.pop()
+            if self.ind0 == 0:
+                self.ind0_hist = [0]
+            return True
+        else:
+            return False
 
     def destination_req(self,
                         xy):
@@ -643,22 +645,45 @@ class Map:
 
     def random_start_edges(self):
         # self.ag_st_mode = 3
-        dxy_surr = np.unique([xy for xy in permutations([-1, -1, 0, 1, 1], 2)],
-                             axis=0)
-        coords_unocc = np.transpose(np.where(self.occ == 0))
-        coords_edge = []
-        for xy in coords_unocc:
-            # if it's not at the edge of the map already
-            if (xy[0] > self.map_lims[0]+2
-                    and xy[0] < self.map_lims[1]-2
-                    and xy[1] > self.map_lims[2]+2
-                    and xy[1] < self.map_lims[3]-2):
-                # check each surrounding pixel for land
-                xy_surr = xy+dxy_surr
-                if any([self.occ[x, y] for x, y in xy_surr]):
-                    coords_edge.append(xy)
 
-        coords_edge_np = np.transpose(np.array(coords_edge))
+        coords_unocc = np.array(self.occ == 0, dtype=int)
+
+        # Functional but slow as
+        # dxy_surr = np.unique([xy for xy in permutations([-1, -1, 0, 1, 1], 2)],
+        #                     axis=0)
+        # coords_edge = []
+        # for xy in coords_unocc:
+        #     # if it's not at the edge of the map already
+        #     if (xy[0] > self.map_lims[0]+2
+        #             and xy[0] < self.map_lims[1]-2
+        #             and xy[1] > self.map_lims[2]+2
+        #             and xy[1] < self.map_lims[3]-2):
+        #         # check each surrounding pixel for land
+        #         xy_surr = xy+dxy_surr
+        #         if any([self.occ[x, y] for x, y in xy_surr]):
+        #             coords_edge.append(xy)
+        # coords_edge_np = np.transpose(np.array(coords_edge))
+
+        # makes the boat appear inside the ground often
+        # s_msk = np.array([[-3, 0, 3], [-10, 0, 10], [-3, 0, 3]])
+        # kx = convolve2d(coords_unocc,
+        #                 s_msk,
+        #                 'same')
+        # ky = convolve2d(coords_unocc,
+        #                 s_msk.T,
+        #                 'same')
+        # ked = np.abs(np.sqrt(kx**2 + ky**2))
+        # coords_edge_np = np.where(ked)
+
+        #
+        edge_y = np.diff(coords_unocc, 1, 1)
+        edge_x = np.diff(coords_unocc, 1, 0)
+
+        t1 = np.pad(edge_y, ((0, 0), (1, 0))) == 1
+        t2 = np.pad(edge_y, ((0, 0), (0, 1))) == -1
+        t3 = np.pad(edge_x, ((0, 1), (0, 0))) == 1
+        t4 = np.pad(edge_x, ((1, 0), (0, 0))) == -1
+        coords_edge_np = np.where(t1+t2+t3+t4 & coords_unocc)
 
         return coords_edge_np
 

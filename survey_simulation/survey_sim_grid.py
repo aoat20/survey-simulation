@@ -30,11 +30,12 @@ class SurveySimulationGrid():
         # initiate flags
         self.end_episode = False
         self.play = False
+        self.action_id = 0
+
         if mode == 'manual':
             self.groupswitch = True
             self.snaptoangle = False
         if mode == 'playback':
-            self.action_id = 0
             self.action_id_prev = 0
 
         # Load parameters from file
@@ -332,6 +333,7 @@ class SurveySimulationGrid():
     def next_step(self):
         success = False
         if not self.end_episode:
+            self.action_id += 1
             self.timer.update_time(self.timer.t_step)
             if self.agent.speed > 0:
                 self.agent.advance_one_step(self.timer.t_step)
@@ -392,7 +394,34 @@ class SurveySimulationGrid():
         return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
 
     def prev_step(self):
-        pass
+        if self.action_id > 0:
+            # rewind the agent
+            rm_cov = self.agent.rewind_one_step()
+            self.griddata.add_agent_pos(self.agent.xy)
+            self.timer.update_time(-self.timer.t_step)
+            if rm_cov:
+                if self.agent.ind0 != 0:
+                    # delete the cov_maps
+                    self.griddata.remove_cov_map(self.covmap.map_stack.pop())
+                    # check how many scans have been done
+                    n_scans = len(self.covmap.map_stack)
+                    det_rm = []
+                    # Check whether the contacts need to be removed
+                    for d in self.contacts.detections[-1::]:
+                        if d.scan_n >= n_scans:
+                            det_rm.append(self.contacts.detections.pop())
+                            print(det_rm)
+                    self.griddata.remove_contacts(det_rm)
+
+            if hasattr(self, 'plotter'):
+                self.plotter.updatecovmap(self.griddata.cov_map)
+                self.plotter.update_plots(self.contacts.detections,
+                                          self.agent.xy,
+                                          self.agent.xy_hist,
+                                          self.timer.time_remaining)
+                self.plotter.update_rewards(self.reward.rewards[-1])
+
+            self.action_id -= 1
 
     def next_step_pb(self):
         # Get current action_id data and following step cov_map
