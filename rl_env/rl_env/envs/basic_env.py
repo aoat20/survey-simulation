@@ -1,7 +1,7 @@
 import gymnasium as gym
 from gymnasium import spaces
 
-from ..utils.reward import RewardFunction
+# from ..utils.reward import RewardFunction
 
 print (gym.__version__)
 import numpy as np
@@ -51,10 +51,11 @@ class BasicEnv(gym.Env):
         
 
         #set reward function
-        reward_kwargs = kwargs.get('reward_kwargs', {})
-        reward_kwargs['type'] = 'live'
-        reward_kwargs['survey_simulation'] = self.survey_simulation
-        self.reward_function = RewardFunction(**reward_kwargs)
+        # reward_kwargs = kwargs.get('reward_kwargs', {})
+        # reward_kwargs['type'] = 'live'
+        # reward_kwargs['survey_simulation'] = self.survey_simulation
+        # self.reward_function = RewardFunction(**reward_kwargs)
+        #TODO: add reward function to the simulation, need to talk to alfie to put in as a kwarg with the new simulation
 
         self.set_action_space()
         self.set_observation_space()
@@ -91,7 +92,8 @@ class BasicEnv(gym.Env):
         self.survey_simulation.new_action('move',self.actions[action])
 
         observation = self._get_observation()
-        reward = self.reward_function.get_reward()
+        # reward = self.reward_function.get_reward()
+        reward = self.survey_simulation.reward.rewards[-1]
 
 
         terminated = False

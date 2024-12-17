@@ -2,15 +2,15 @@ import rl_env  # This will automatically register your custom environment
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import SubprocVecEnv, make_vec_env
 
-LEARN_STEPS = 100000
+LEARN_STEPS = 10000
 
 
 env_kwargs = {
-        'params_filepath': '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/params.txt',
+        'params_filepath': 'rl_env/params.txt',
         'save_logs': False,
         'obs_type': 'coverage_occupancy'
     }
-env = make_vec_env('BasicEnv-v0', n_envs=4, seed=0, env_kwargs=env_kwargs, vec_env_cls=SubprocVecEnv)
+env = make_vec_env('BasicEnv-v0', n_envs=4, seed=0, env_kwargs=env_kwargs)
 
 
 

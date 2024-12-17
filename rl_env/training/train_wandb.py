@@ -42,7 +42,7 @@ if __name__ == "__main__":
             'save_logs': False,
             'obs_type': 'coverage_occupancy'
         }
-    env = make_vec_env(config['env_name'], n_envs=N_ENVS, env_kwargs=env_kwargs)
+    env = make_vec_env(config['env_name'], n_envs=N_ENVS, env_kwargs=env_kwargs,vec_env_cls=SubprocVecEnv)
     env = VecMonitor(env)
 
 
@@ -53,8 +53,8 @@ if __name__ == "__main__":
         'gae_lambda': 0.95,
         'gamma': 0.99,
         'clip_range': 0.2,
-        'ent_coef': 0,
-        'learning_rate': 1e-3,
+        'ent_coef': 1e-5,
+        'learning_rate': 1e-4,
         'vf_coef': 0.5,
         'max_grad_norm': 0.5,
     }
