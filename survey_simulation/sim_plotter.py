@@ -184,12 +184,12 @@ class Plotter:
         if hasattr(self, 'rew_text'):
             self.rew_text.remove()
 
-        self.rew_text = plt.text(0.05,
-                                 0.95,
-                                 "Reward: {:.1f}/{:.1f}".format(current_reward,
-                                                                final_reward),
-                                 fontsize=14,
-                                 transform=plt.gcf().transFigure)
+        self.rew_text = self.fig.text(0.05,
+                                      0.95,
+                                      "Reward: {:.1f}/{:.1f}".format(current_reward,
+                                                                     final_reward),
+                                      fontsize=14,
+                                      transform=plt.gcf().transFigure)
 
     def updateps(self, playspeed):
         self.ax.set_title("Playspeed: {:.0f}x".format(playspeed))
