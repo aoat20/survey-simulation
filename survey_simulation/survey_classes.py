@@ -366,7 +366,7 @@ class Detection:
     det_n: int
     x: float
     y: float
-    range: float
+    range_m: float
     angle: float
     scan_n: int
     group_n: int
