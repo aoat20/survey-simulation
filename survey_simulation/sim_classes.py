@@ -567,6 +567,7 @@ class Map:
                  map_lims=[0, 100, 0, 100],
                  random_map=False):
 
+        self.agent_st = []
         self.ag_st_mode = 0
         self.map_lims = map_lims
 
