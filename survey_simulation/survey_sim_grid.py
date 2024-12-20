@@ -410,7 +410,6 @@ class SurveySimulationGrid():
                     for d in self.contacts.detections[-1::]:
                         if d.scan_n >= n_scans:
                             det_rm.append(self.contacts.detections.pop())
-                            print(det_rm)
                     self.griddata.remove_contacts(det_rm)
 
             if hasattr(self, 'plotter'):
