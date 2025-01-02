@@ -433,7 +433,8 @@ class SEASPlotter(Plotter):
                  map_lims,
                  xy_start,
                  xy_start_vessels):
-        self.setup_plot(map_lims)
+        self.setup_plot()
+        self.set_map_lims(map_lims)
         self.agent = self.AgentPlot(ax=self.ax,
                                     xy0=xy_start,
                                     speed=0,
