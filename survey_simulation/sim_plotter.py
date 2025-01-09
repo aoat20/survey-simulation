@@ -186,7 +186,7 @@ class Plotter:
 
         self.rew_text = self.fig.text(0.05,
                                       0.95,
-                                      "Reward: {:.1f}/{:.1f}".format(current_reward,
+                                      "Reward: {:.2f}/{:.2f}".format(current_reward,
                                                                      final_reward),
                                       fontsize=14,
                                       transform=plt.gcf().transFigure)
