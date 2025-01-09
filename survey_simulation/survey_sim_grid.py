@@ -200,6 +200,7 @@ class SurveySimulationGrid():
         elif mode == 'playback' and hasattr(self, 'plotter'):
             self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
                                                       self.on_key_playback)
+            self.plotter.show_reward_graph(self.reward.rewards)
 
         # Set the simulator running
         if mode == "manual":
