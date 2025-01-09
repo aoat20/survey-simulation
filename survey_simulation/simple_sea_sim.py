@@ -35,6 +35,13 @@ class SEASSimulation():
 
         self.plotting_loop(plotter)
 
+    def check_failure_conditions(self):
+        pass
+
+    def check_distances(self, xy1, xy2):
+        d = np.sqrt((xy1[0]-xy2[0])**2 + (xy1[1]-xy2[1])**2)
+        return d
+
     def plotting_loop(self,
                       plotter: SEASPlotter):
         # Controls callback
@@ -72,9 +79,10 @@ class SEASSimulation():
 
     def next_step(self):
         self.agent.advance_one_step(0.04*self.playspeed)
-
         for v in self.vessels:
             v.advance_one_step(0.04*self.playspeed)
+            self.check_distances(self.agent.xy, 
+                                 v.xy)
 
     def update_plot(self,
                     plotter: SEASPlotter):
