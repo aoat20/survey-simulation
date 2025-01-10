@@ -355,7 +355,8 @@ class Plotter:
 
         def addspeedandcourse(self, xy, speed, course):
             self.txtlbl.set_position(xy)
-            self.txtlbl.set_text(f'Speed:{speed:.2f} \nCourse:{course:.0f}')
+            self.txtlbl.set_text(
+                f'Speed:{speed:.2f}kn \nCourse:{course:.0f}deg')
 
 
 class SurveyPlotter(Plotter):
