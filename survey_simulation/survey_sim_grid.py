@@ -216,6 +216,12 @@ class SurveySimulationGrid():
             t_el = np.clip(time.time() - tic, 0, 0.04)
             self.plotter.pause(0.0401 - t_el)
 
+    def waypoint_reached(self):
+        if self.agent.speed == 0:
+            return True
+        else:
+            return False
+
     def plotting_loop_pb(self):
         self.plotter.draw()
         while True:
@@ -308,6 +314,7 @@ class SurveySimulationGrid():
         # for 'group', action = c_inds
         # for 'ungroup' action = g_ind
         action_types = ['move',
+                        'waypoint',
                         'group',
                         'ungroup']
 
@@ -320,11 +327,15 @@ class SurveySimulationGrid():
         if action_type == 'move':
             # check move is valid
             if isinstance(action, int) or isinstance(action, float):
+                self.agent.distance_dest = np.inf
                 self.agent.set_speedandcourse(self.agent.speed0,
                                               action)
             else:
                 raise ValueError("Invalid move action. Should be "
                                  "a float/int representing the course.")
+
+        elif action_type == 'waypoint':
+            self.agent.destination_req(action)
 
         elif action_type == 'group':
             self.add_group(action)
