@@ -193,19 +193,28 @@ class Plotter:
 
     def show_reward_graph(self,
                           rewards):
-        f, ax1 = plt.subplots()
+        f, self.ax1 = plt.subplots()
         color = 'tab:red'
-        ax1.plot(rewards, color=color)
-        ax1.set_title('Rewards')
-        ax1.set_ylabel('Cumulative Reward', color=color)
-        ax1.tick_params(axis='y', labelcolor=color)
-        ax1.set_xlabel('Step')
+        self.ax1.plot(rewards, color=color)
+        self.ax1.set_title('Rewards')
+        self.ax1.set_ylabel('Cumulative Reward', color=color)
+        self.ax1.tick_params(axis='y', labelcolor=color)
+        self.ax1.set_xlabel('Step')
 
-        ax2 = ax1.twinx()
+        ax2 = self.ax1.twinx()
         color = 'tab:blue'
         ax2.set_ylabel('Step Reward', color=color)
         ax2.plot(np.diff(rewards), color=color)
         ax2.tick_params(axis='y', labelcolor=color)
+
+        self.t_rew_plt = self.ax1.plot((10., 10.),
+                                       (0., float(max(rewards))),
+                                       color='black',
+                                       linestyle='dashed',
+                                       linewidth=1)[0]
+
+    def update_rew_time(self, t):
+        self.t_rew_plt.set_xdata((t, t))
 
     def updateps(self, playspeed):
         self.ax.set_title("Playspeed: {:.0f}x".format(playspeed))
@@ -352,11 +361,12 @@ class Plotter:
             self.track_int_plt.set_data((xy0[0], xy1[0]),
                                         (xy0[1], xy1[1]))
             self.agentpos.set_marker((3, 0, -course))
+            self.agentpos.set_markersize(20)
 
         def addspeedandcourse(self, xy, speed, course):
             self.txtlbl.set_position(xy)
             self.txtlbl.set_text(
-                f'Speed:{speed:.2f}kn \n   Course:{course:.0f}deg')
+                f'Speed:{speed:.1f}kn \n   Course:{course:.0f}deg')
 
 
 class SurveyPlotter(Plotter):

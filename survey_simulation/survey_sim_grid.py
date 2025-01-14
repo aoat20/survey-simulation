@@ -474,6 +474,7 @@ class SurveySimulationGrid():
             self.plotter.updategroups(grps)
             self.plotter.update_rewards(self.reward.rewards[self.action_id],
                                         self.reward.rewards[-1])
+            self.plotter.update_rew_time(self.timer.time_elapsed)
             self.plotter.draw()
 
         if hasattr(self, 'agent_viz'):
