@@ -40,6 +40,7 @@ class RewardFunction():
 
         self.reward_function_id = kwargs.get('reward_id', 'default')
         self.rewards = [0]
+        self.reward = 0
 
     def get_reward(self,
                    obs_dict,
@@ -49,10 +50,8 @@ class RewardFunction():
         if reward_function is None:
             raise ValueError(
                 f'Reward function {self.reward_function_id} not found')
-        reward = reward_function(obs_dict, **kwargs)
-        self.rewards.append(self.rewards[-1]+reward)
-
-        return reward
+        self.reward = reward_function(obs_dict, **kwargs)
+        self.rewards.append(self.rewards[-1]+self.reward)
 
     def reset(self):
         self.rewards = [0]
