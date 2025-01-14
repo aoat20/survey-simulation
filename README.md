@@ -89,7 +89,7 @@ while running:
     obs = ss.get_obs()
 ```
 
-## Demo
+## Demo (move)
 This is included in example_script.py
 
 ```python
@@ -103,6 +103,7 @@ ss = SurveySimulationGrid('manual')
 ss = SurveySimulationGrid('test',
                           save_dir='data')
 
+# For an arbitrary number of time steps move around
 for n in range(500):
     rnd_heading = np.random.randint(-70,70)
 
@@ -117,6 +118,25 @@ for n in range(500):
 ss = SurveySimulationGrid('playback', 
                           save_dir='data/',
                           ep_n=2)
+```
+## Demo 2 (waypoints)
+
+```python 
+ss = SurveySimulationGrid('test',
+                          save_dir='data',
+                          agent_viz=0,
+                          plotter=1)
+
+while not ss.end_episode:
+
+    if ss.waypoint_reached():
+        rnd_mv = (np.random.randint(1, 249), np.random.randint(60, 125))
+        ss.new_action('waypoint',
+                      rnd_mv)
+
+    obs = ss.next_step()
+print(ss.termination_reason)
+ss.save_episode()
 ```
 
 ## Parameter file
