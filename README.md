@@ -124,8 +124,8 @@ ss = SurveySimulationGrid('playback',
 ```python 
 ss = SurveySimulationGrid('test',
                           save_dir='data',
-                          agent_viz=0,
-                          plotter=1)
+                          plotter=1,
+                          map_n=2)
 
 while not ss.end_episode:
 
