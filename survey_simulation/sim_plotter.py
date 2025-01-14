@@ -184,12 +184,28 @@ class Plotter:
         if hasattr(self, 'rew_text'):
             self.rew_text.remove()
 
-        self.rew_text = plt.text(0.05,
-                                 0.95,
-                                 "Reward: {:.1f}/{:.1f}".format(current_reward,
-                                                                final_reward),
-                                 fontsize=14,
-                                 transform=plt.gcf().transFigure)
+        self.rew_text = self.fig.text(0.05,
+                                      0.95,
+                                      "Reward: {:.2f}/{:.2f}".format(current_reward,
+                                                                     final_reward),
+                                      fontsize=14,
+                                      transform=plt.gcf().transFigure)
+
+    def show_reward_graph(self,
+                          rewards):
+        f, ax1 = plt.subplots()
+        color = 'tab:red'
+        ax1.plot(rewards, color=color)
+        ax1.set_title('Rewards')
+        ax1.set_ylabel('Cumulative Reward', color=color)
+        ax1.tick_params(axis='y', labelcolor=color)
+        ax1.set_xlabel('Step')
+
+        ax2 = ax1.twinx()
+        color = 'tab:blue'
+        ax2.set_ylabel('Step Reward', color=color)
+        ax2.plot(np.diff(rewards), color=color)
+        ax2.tick_params(axis='y', labelcolor=color)
 
     def updateps(self, playspeed):
         self.ax.set_title("Playspeed: {:.0f}x".format(playspeed))
@@ -339,7 +355,8 @@ class Plotter:
 
         def addspeedandcourse(self, xy, speed, course):
             self.txtlbl.set_position(xy)
-            self.txtlbl.set_text(f'Speed:{speed:.2f} \nCourse:{course:.0f}')
+            self.txtlbl.set_text(
+                f'Speed:{speed:.2f}kn \nCourse:{course:.0f}deg')
 
 
 class SurveyPlotter(Plotter):
@@ -433,7 +450,8 @@ class SEASPlotter(Plotter):
                  map_lims,
                  xy_start,
                  xy_start_vessels):
-        self.setup_plot(map_lims)
+        self.setup_plot()
+        self.set_map_lims(map_lims)
         self.agent = self.AgentPlot(ax=self.ax,
                                     xy0=xy_start,
                                     speed=0,

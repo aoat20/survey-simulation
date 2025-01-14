@@ -36,13 +36,17 @@ Click on the map to go to next coordinate.
 - "#" key will reveal the target locations and end the episode. After ending the episode, press "=" to save the episode logs.
 
 ### Test 
-Test mode is for interacting with the simulator in Python. After instantiating a simulator object, use new_action function to "move", "group" and "ungroup".
+Test mode is for interacting with the simulator in Python. After instantiating a simulator object, use new_action function to "move", "waypoint", "group" and "ungroup".
 
 ```python 
-ss.new_action('move', course)
+ss.new_action('move', bearing)
+ss.new_action('waypoint', (x, y))
 ss.new_action('group', [c0, c1, c2])
 ss.new_action('ungroup',[g0])
 ```
+- Using the "move" action will move the agent one timestep in that bearing.
+- Using the "waypoint" action will travel towards the given waypoint until interrupted by another "waypoint" or "move" action or it reaches the waypoint (this can be checked using the waypoint_reached() function, which will return True once the agent has stopped at the waypoint.).
+
 "next_step" outputs four data objects:
 ```python
 ss.new_action('move', course)
