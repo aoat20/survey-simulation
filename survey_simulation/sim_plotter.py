@@ -296,7 +296,7 @@ class Plotter:
                      xy0,
                      speed=[],
                      course=[],
-                     col='blue'):
+                     color='blue'):
             # store initial position
             self.xy0 = xy0
             # agent position
@@ -304,7 +304,7 @@ class Plotter:
                                      marker='o',
                                      markersize=10,
                                      markeredgecolor='blue',
-                                     markerfacecolor=col,
+                                     markerfacecolor=color,
                                      zorder=5)
 
             self.target_pos, = ax.plot([],
@@ -356,7 +356,7 @@ class Plotter:
         def addspeedandcourse(self, xy, speed, course):
             self.txtlbl.set_position(xy)
             self.txtlbl.set_text(
-                f'Speed:{speed:.2f}kn \nCourse:{course:.0f}deg')
+                f'Speed:{speed:.2f}kn \n   Course:{course:.0f}deg')
 
 
 class SurveyPlotter(Plotter):
@@ -454,13 +454,14 @@ class SEASPlotter(Plotter):
         self.set_map_lims(map_lims)
         self.agent = self.AgentPlot(ax=self.ax,
                                     xy0=xy_start,
+                                    color='blue',
                                     speed=0,
                                     course=0)
         self.vessels = []
         for xy in xy_start_vessels:
             self.vessels.append(self.AgentPlot(self.ax,
                                                xy,
-                                               col='green',
+                                               color='red',
                                                speed=0,
                                                course=0))
         self.updateps(1)
