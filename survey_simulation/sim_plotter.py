@@ -207,7 +207,7 @@ class Plotter:
         ax2.plot(np.diff(rewards), color=color)
         ax2.tick_params(axis='y', labelcolor=color)
 
-        self.t_rew_plt = self.ax1.plot((10., 10.),
+        self.t_rew_plt = self.ax1.plot((0., 0.),
                                        (0., float(max(rewards))),
                                        color='black',
                                        linestyle='dashed',
