@@ -19,8 +19,13 @@ class Agent:
                  scan_thr=0):
         #
         self.speed0 = speed
+        self.speed_req = speed
+        self.speed_change_rate = 0
         self.course0 = course
         self.course = course
+        self.course_req = course
+        self.course_change_rate = 0
+
         self.xy_start_candidates = xy_start
 
         self.xy = self.xy_st_pos()
@@ -66,6 +71,17 @@ class Agent:
         self.xy_hist = np.append(self.xy_hist,
                                  [np.array(self.xy)],
                                  axis=0)
+        # Adjust speed and course
+        if self.speed_req > self.speed:
+            self.speed = self.speed + self.speed_change_rate*t_elapsed
+        elif self.speed_req < self.speed:
+            self.speed = self.speed - self.speed_change_rate*t_elapsed
+
+        if self.course_req is not None:
+            if self.course_req > self.course:
+                self.course = self.course + self.course_change_rate*t_elapsed
+            elif self.course_req < self.course:
+                self.course = self.course - self.course_change_rate*t_elapsed
 
     def rewind_one_step(self):
         # Change to the previous positin
@@ -341,12 +357,12 @@ class Timer:
     def update_temp(self, xy1, xy2, xy0, agent_spd):
         # update the temporary time
         self.time_temp = (self.time_remaining
-                          - self.elapsedtime(xy1, xy2, agent_spd)
-                          - self.elapsedtime(xy2, xy0, agent_spd))
+                          - self._elapsedtime(xy1, xy2, agent_spd)
+                          - self._elapsedtime(xy2, xy0, agent_spd))
 
     def update(self, xy1, xy2, agent_spd):
         # update remaining time based on distance travelled
-        t_temp = self.elapsedtime(xy1, xy2, agent_spd)
+        t_temp = self._elapsedtime(xy1, xy2, agent_spd)
         self.time_remaining -= t_temp
         self.time_elapsed += t_temp
 
@@ -355,7 +371,7 @@ class Timer:
         self.time_remaining -= t
         self.time_elapsed += t
 
-    def elapsedtime(self, xy1, xy2, agent_spd):
+    def _elapsedtime(self, xy1, xy2, agent_spd):
         # compute travel time
         t_elapsed = math.dist(xy1,
                               xy2)/agent_spd
@@ -928,12 +944,13 @@ class GriddedData:
         self.cov_map[0] = cov_temp - cov_cnt
 
         # Get each angular count
-        b_inds = np.digitize(cov_map, self.bins)
+        b_inds = np.digitize((cov_map + self.ang_diff/2) % 360, self.bins)
         b_inds[np.isnan(cov_map)] = 0
         for b in enumerate(self.bins):
-            cov_temp = self.cov_map[b[0]+1]
-            ang_cov_cnt = (b_inds == b[0]+1).astype(int)
-            self.cov_map[b[0]+1] = cov_temp - ang_cov_cnt
+            b_i = b[0]+1
+            cov_temp = self.cov_map[b_i]
+            ang_cov_cnt = (b_inds == b_i).astype(int)
+            self.cov_map[b_i] = cov_temp - ang_cov_cnt
 
     def add_agent_pos(self, agent_xy):
         ag_pos_rnd = np.int16(np.floor(agent_xy))
