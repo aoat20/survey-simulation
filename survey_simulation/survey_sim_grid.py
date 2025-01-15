@@ -29,18 +29,18 @@ class SurveySimulationGrid():
 
         # initiate flags
         self.end_episode = False
-        self.play = False
-        self.action_id = 0
+        self._play = False
+        self._action_id = 0
 
         if mode == 'manual':
-            self.groupswitch = True
-            self.snaptoangle = False
+            self._groupswitch = True
+            self._snaptoangle = False
         if mode == 'playback':
-            self.action_id_prev = 0
+            self._action_id_prev = 0
 
         # Load parameters from file
         if mode == "manual" or mode == "test":
-            params = self.load_params(params_filepath)
+            params = self._load_params(params_filepath)
         elif mode == "playback":
             if log_file != '':
                 ep_dir = log_file
@@ -50,7 +50,7 @@ class SurveySimulationGrid():
             l_dir = os.listdir(ep_dir)
             p_path = [x for x in l_dir if 'META' in x][0]
             map_path = [x for x in l_dir if 'MAP' in x][0]
-            params = self.load_params(os.path.join(ep_dir, p_path))
+            params = self._load_params(os.path.join(ep_dir, p_path))
 
         # Modify parameters from arguments
         fta = True
@@ -70,8 +70,6 @@ class SurveySimulationGrid():
                 # Add parameter to dictionary
             params[key] = value
 
-        self.msa = params['min_scan_angle_diff']
-
         # Set random seed if required for debugging purposes
         if mode == "manual" or mode == 'test':
             if 'rand_seed' in params.keys():
@@ -85,187 +83,196 @@ class SurveySimulationGrid():
         # else make a random map
         # else just make an empty space to move around in
         if mode == 'playback':
-            self.map_obj = Map(map_path=os.path.join(ep_dir, map_path))
+            self._map_obj = Map(map_path=os.path.join(ep_dir, map_path))
         else:
             if 'map_n' in params:
-                self.map_obj = Map(map_n=params['map_n'])
+                self._map_obj = Map(map_n=params['map_n'])
             elif 'map_path' in params:
-                self.map_obj = Map(map_path=params['map_path'])
+                self._map_obj = Map(map_path=params['map_path'])
             elif 'map_random' in params:
                 print('Random map being generated')
-                self.map_obj = Map(random_map=True)
+                self._map_obj = Map(random_map=True)
             else:
                 try:
-                    self.map_obj = Map(map_lims=params['map_area_lims'])
+                    self._map_obj = Map(map_lims=params['map_area_lims'])
                 except:
                     raise Exception('Need to include some map specification' +
                                     ' (map_n, map_path, map_random or map_area_lims )')
 
         if mode == "playback":
-            self.playback = Playback(ep_dir)
+            self._playback = Playback(ep_dir)
 
         # Set the agent start position
         if mode == 'playback':
-            d_temp = self.playback.get_data(0)
+            d_temp = self._playback.get_data(0)
             agent_start = d_temp[1]
         elif params.get('random_start') == 1:
             # Random start anywhere
-            self.map_obj.ag_st_mode = 2
+            self._map_obj.ag_st_mode = 2
         elif params.get('random_start') == 2:
             # Random start edges
-            self.map_obj.ag_st_mode = 3
+            self._map_obj.ag_st_mode = 3
         else:
             # use specified start if available, else default for map
             if 'agent_start' in params:
-                self.map_obj.ag_st_mode = 1
-                self.map_obj.agent_st = params['agent_start']
+                self._map_obj.ag_st_mode = 1
+                self._map_obj.agent_st = params['agent_start']
             else:
-                self.map_obj.ag_st_mode = 0
+                self._map_obj.ag_st_mode = 0
 
         if mode != 'playback':
-            agent_start = self.map_obj.get_agent_start()
+            agent_start = self._map_obj.get_agent_start()
 
         # Get t step and grid spacing
-        self.agent = Agent(xy_start=agent_start,
-                           speed=params['agent_speed'],
-                           scan_thr=params['scan_thr'])
+        self._agent = Agent(xy_start=agent_start,
+                            speed=params['agent_speed'],
+                            scan_thr=params['scan_thr'])
         # Check if agent start position is in the map bounds
-        if self.map_obj.is_occupied(self.agent.xy):
+        if self._map_obj.is_occupied(self._agent.xy):
             raise Exception("Agent position is not valid")
-        self.contacts = ContactDetections(loc_uncertainty=params['loc_uncertainty'],
-                                          n_targets=params['n_targets'],
-                                          det_probs=params['det_probs'],
-                                          clutter_density=params['clutter_dens'],
-                                          det_probs_clutter=params['det_probs_clutter'],
-                                          clutter_ori_mean=params['clutter_or_mean'],
-                                          clutter_ori_std=params['clutter_or_std'])
-        self.covmap = CoverageMap(map_lims=self.map_obj.map_lims,
-                                  leadinleadout=params['leadinleadout'],
-                                  min_scan_l=params['min_scan_l'],
-                                  scan_width=params['scan_width'],
-                                  nadir_width=params['nadir_width'])
+        self._contacts = ContactDetections(loc_uncertainty=params['loc_uncertainty'],
+                                           n_targets=params['n_targets'],
+                                           det_probs=params['det_probs'],
+                                           clutter_density=params['clutter_dens'],
+                                           det_probs_clutter=params['det_probs_clutter'],
+                                           clutter_ori_mean=params['clutter_or_mean'],
+                                           clutter_ori_std=params['clutter_or_std'])
+        self._covmap = CoverageMap(map_lims=self._map_obj.map_lims,
+                                   leadinleadout=params['leadinleadout'],
+                                   min_scan_l=params['min_scan_l'],
+                                   scan_width=params['scan_width'],
+                                   nadir_width=params['nadir_width'])
 
-        self.griddata = GriddedData(map_lims=self.map_obj.map_lims,
-                                    angle_diff=params['min_scan_angle_diff'],
-                                    occ_map=self.map_obj.occ,
-                                    agent_xy=self.agent.xy)
-        self.timer = Timer(params['time_lim'],
-                           params['t_step'])
-        self.reward = RewardFunction()
+        self._griddata = GriddedData(map_lims=self._map_obj.map_lims,
+                                     angle_diff=params['min_scan_angle_diff'],
+                                     occ_map=self._map_obj.occ,
+                                     agent_xy=self._agent.xy)
+        self._timer = Timer(params['time_lim'],
+                            params['t_step'])
+        self._reward = RewardFunction()
 
         if mode == 'playback':
-            self.run_to_end()
+            self._run_to_end()
 
         if params.get('agent_viz'):
-            self.agent_viz = AgentViz(map_dims=self.map_obj.map_lims,
-                                      occ_map=self.map_obj.occ)
+            self._agent_viz = AgentViz(map_dims=self._map_obj.map_lims,
+                                       occ_map=self._map_obj.occ)
 
         if mode == "manual" or mode == 'test':
             # Generate contact locations
-            self.contacts.generate_targets(self.map_obj.occ)
+            self._contacts.generate_targets(self._map_obj.occ)
             # instantiate extra objects
-            self.logger = Logger(agent_start=self.agent.xy,
-                                 time_lim=params['time_lim'],
-                                 map_lims=self.map_obj.map_lims,
-                                 params=params,
-                                 gnd_trth=self.contacts.truth,
-                                 save_dir=save_dir,
-                                 map_img=self.map_obj.img)
+            self._logger = Logger(agent_start=self._agent.xy,
+                                  time_lim=params['time_lim'],
+                                  map_lims=self._map_obj.map_lims,
+                                  params=params,
+                                  gnd_trth=self._contacts.truth,
+                                  save_dir=save_dir,
+                                  map_img=self._map_obj.img)
 
         if mode == "manual" or params['plotter']:
-            self.plotter = SurveyPlotter(map_lims=self.map_obj.map_lims,
-                                         map_img=self.map_obj.img,
-                                         xy0=self.agent.xy,
-                                         time_lim=params['time_lim'],
-                                         leadinleadout=self.covmap.leadinleadout,
-                                         min_scan_l=self.covmap.min_scan_l,
-                                         scan_width=self.covmap.scan_width,
-                                         min_scan_ang=params['min_scan_angle_diff'],
-                                         n_angles=params['N_angles'],
-                                         n_looks=params['N_looks'])
-            self.plotter.show(blocking=False)
-            self.plotter.draw()
+            self._plotter = SurveyPlotter(map_lims=self._map_obj.map_lims,
+                                          map_img=self._map_obj.img,
+                                          xy0=self._agent.xy,
+                                          time_lim=params['time_lim'],
+                                          leadinleadout=self._covmap.leadinleadout,
+                                          min_scan_l=self._covmap.min_scan_l,
+                                          scan_width=self._covmap.scan_width,
+                                          min_scan_ang=params['min_scan_angle_diff'],
+                                          n_angles=params['N_angles'],
+                                          n_looks=params['N_looks'])
+            self._plotter.show(blocking=False)
+            self._plotter.draw()
 
         # Set up event handlers
         if mode == "manual":
             # mouse and key event handlers
-            self.plotter.ax.figure.canvas.mpl_connect('button_press_event',
-                                                      self.on_click)
-            self.plotter.ax.figure.canvas.mpl_connect('motion_notify_event',
-                                                      self.mouse_move)
-            self.plotter.ax.figure.canvas.mpl_connect('pick_event',
-                                                      self.on_pick)
-            self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
-                                                      self.on_key_manual)
-        elif mode == 'playback' and hasattr(self, 'plotter'):
-            self.plotter.ax.figure.canvas.mpl_connect('key_press_event',
-                                                      self.on_key_playback)
-            self.plotter.show_reward_graph(self.reward.rewards)
+            self._plotter.ax.figure.canvas.mpl_connect('button_press_event',
+                                                       self._on_click)
+            self._plotter.ax.figure.canvas.mpl_connect('motion_notify_event',
+                                                       self._mouse_move)
+            self._plotter.ax.figure.canvas.mpl_connect('pick_event',
+                                                       self._on_pick)
+            self._plotter.ax.figure.canvas.mpl_connect('key_press_event',
+                                                       self._on_key_manual)
+        elif mode == 'playback' and hasattr(self, '_plotter'):
+            self._plotter.ax.figure.canvas.mpl_connect('key_press_event',
+                                                       self._on_key_playback)
+            self._plotter.show_reward_graph(self._reward.rewards)
 
         # Set the simulator running
         if mode == "manual":
-            self.plotting_loop()
-        elif mode == "playback" and hasattr(self, 'plotter'):
-            self.plotting_loop_pb()
+            self._plotting_loop()
+        elif mode == "playback" and hasattr(self, '_plotter'):
+            self._plotting_loop_pb()
 
-    def plotting_loop(self):
+    def _plotting_loop(self):
         while True:
             tic = time.time()
-            if self.agent.speed != 0:
+            if self._agent.speed != 0:
                 self.next_step()
             t_el = np.clip(time.time() - tic, 0, 0.04)
-            self.plotter.pause(0.0401 - t_el)
+            self._plotter.pause(0.0401 - t_el)
 
     def waypoint_reached(self):
-        if self.agent.speed == 0:
+        if self._agent.speed == 0:
             return True
         else:
             return False
 
-    def plotting_loop_pb(self):
-        self.plotter.draw()
+    def _plotting_loop_pb(self):
+        self._plotter.draw()
         while True:
-            if self.play:
-                if self.action_id >= self.playback.ep_end:
-                    self.plotter.pause(0.1)
+            if self._play:
+                if self._action_id >= self._playback.ep_end:
+                    self._plotter.pause(0.1)
                 else:
-                    self.action_id += 1
-                    # self.plotter.pause(0.04)
-            if self.action_id_prev != self.action_id:
-                self.next_step_pb()
+                    self._action_id += 1
+                    # self._plotter.pause(0.04)
+            if self._action_id_prev != self._action_id:
+                self._next_step_pb()
 
-            self.plotter.pause(0.0001)
+            self._plotter.pause(0.0001)
 
-    def playback_step(self):
-        if self.action_id >= self.playback.ep_end:
+    def _playback_step(self):
+        if self._action_id >= self._playback.ep_end:
             return 0
         else:
-            self.action_id += 1
-            self.next_step_pb()
+            self._action_id += 1
+            self._next_step_pb()
             return 1
 
-    def get_reward(self):
+    def _compute_reward(self):
         # Get all the observations for the rewards function
-        obs_dict = {'cov_map': self.griddata.cov_map,
-                    'path_length': self.agent.get_current_path_len()}
-        return self.reward.get_reward(obs_dict=obs_dict)
+        obs_dict = {'cov_map': self._griddata.cov_map,
+                    'path_length': self._agent.get_current_path_len()}
+        self._reward.get_reward(obs_dict=obs_dict)
 
-    def run_to_end(self):
+    def get_reward(self,
+                   inst_or_cum='i'):
+        if inst_or_cum == 'i':
+            return self._reward.reward
+        elif inst_or_cum == 'c':
+            return self._reward.rewards
+        else:
+            raise ValueError("Invalid reward. Expected i or c")
+
+    def _run_to_end(self):
         running = True
         while running:
-            running = self.playback_step()
-            self.get_reward()
+            running = self._playback_step()
+            self._compute_reward()
 
-        self.run_to_start()
+        self._run_to_start()
 
-    def run_to_start(self):
-        while self.action_id > 0:
-            self.action_id -= 1
-            self.next_step_pb()
-        self.griddata.reset()
+    def _run_to_start(self):
+        while self._action_id > 0:
+            self._action_id -= 1
+            self._next_step_pb()
+        self._griddata.reset()
 
-    def load_params(self,
-                    param_file: str):
+    def _load_params(self,
+                     param_file: str):
         param_dict = {}
         with open(param_file) as fh:
             for line in fh:
@@ -295,15 +302,15 @@ class SurveySimulationGrid():
 
         return param_dict
 
-    def check_termination(self):
+    def _check_termination(self):
         # Termination conditions
         # Timer runs out
-        if self.timer.time_remaining < 0:
-            self.terminate_episode()
+        if self._timer.time_remaining < 0:
+            self._terminate_episode()
             self.termination_reason = "Run out of time"
         # Hits land
-        if self.map_obj.is_occupied(self.agent.xy):
-            self.terminate_episode()
+        if self._map_obj.is_occupied(self._agent.xy):
+            self._terminate_episode()
             self.termination_reason = "Grounded"
         # Returns home
 
@@ -311,6 +318,7 @@ class SurveySimulationGrid():
                    action_type: str,
                    action):
         # for 'move', action = course
+        # for 'waypoint', action = (x, y)
         # for 'group', action = c_inds
         # for 'ungroup' action = g_ind
         action_types = ['move',
@@ -327,182 +335,182 @@ class SurveySimulationGrid():
         if action_type == 'move':
             # check move is valid
             if isinstance(action, int) or isinstance(action, float):
-                self.agent.distance_dest = np.inf
-                self.agent.set_speedandcourse(self.agent.speed0,
-                                              action)
+                self._agent.distance_dest = np.inf
+                self._agent.set_speedandcourse(self._agent.speed0,
+                                               action)
             else:
                 raise ValueError("Invalid move action. Should be "
                                  "a float/int representing the course.")
 
         elif action_type == 'waypoint':
-            self.agent.destination_req(action)
+            self._agent.destination_req(action)
 
         elif action_type == 'group':
-            self.add_group(action)
+            self._add_group(action)
         elif action_type == 'ungroup':
-            self.remove_group(action)
+            self._remove_group(action)
 
     def next_step(self):
         success = False
         if not self.end_episode:
-            self.action_id += 1
-            self.timer.update_time(self.timer.t_step)
-            if self.agent.speed > 0:
-                self.agent.advance_one_step(self.timer.t_step)
-                self.logger.add_move(self.agent.xy)
-                self.griddata.add_agent_pos(self.agent.xy)
+            self._action_id += 1
+            self._timer.update_time(self._timer.t_step)
+            if self._agent.speed > 0:
+                self._agent.advance_one_step(self._timer.t_step)
+                self._logger.add_move(self._agent.xy)
+                self._griddata.add_agent_pos(self._agent.xy)
 
             # check if path is still straight and if not,
             # compute the previous coverage and contacts
-            ind0 = self.agent.check_path_straightness()
+            ind0 = self._agent.check_path_straightness()
             if ind0 is not None:
-                rc, ang, success = self.covmap.add_scan(self.agent.xy_hist[ind0],
-                                                        self.agent.xy_hist[-2])
+                rc, ang, success = self._covmap.add_scan(self._agent.xy_hist[ind0],
+                                                         self._agent.xy_hist[-2])
                 # check contact detections
                 if success:
-                    obs_str, n_dets = self.contacts.add_dets(rc, ang)
+                    obs_str, n_dets = self._contacts.add_dets(rc, ang)
                     # Add to logger
-                    self.logger.add_covmap(self.covmap.map_stack[-1])
-                    self.logger.add_observation(obs_str,
-                                                self.timer.time_remaining)
+                    self._logger.add_covmap(self._covmap.map_stack[-1])
+                    self._logger.add_observation(obs_str,
+                                                 self._timer.time_remaining)
                     # Add to gridded summary
-                    self.griddata.add_cov_map(self.covmap.map_stack[-1])
+                    self._griddata.add_cov_map(self._covmap.map_stack[-1])
                     if n_dets > 0:
-                        self.griddata.add_contacts(
-                            [self.contacts.detections[-n_dets]])
+                        self._griddata.add_contacts(
+                            [self._contacts.detections[-n_dets]])
 
-        ag_pos = self.griddata.agent
-        occ_map = self.griddata.occ_map
-        cov_map = self.griddata.cov_map
-        cts = self.griddata.cts
+        ag_pos = self._griddata.agent
+        occ_map = self._griddata.occ_map
+        cov_map = self._griddata.cov_map
+        cts = self._griddata.cts
 
-        self.get_reward()
+        self._compute_reward()
 
-        if hasattr(self, 'agent_viz'):
-            self.agent_viz.update(ag_pos,
-                                  occ_map,
-                                  cov_map[0],
-                                  cts)
+        if hasattr(self, '_agent_viz'):
+            self._agent_viz.update(ag_pos,
+                                   occ_map,
+                                   cov_map[0],
+                                   cts)
 
-        if hasattr(self, 'plotter'):
+        if hasattr(self, '_plotter'):
             if success:
-                self.plotter.updatecovmap(self.griddata.cov_map)
-            self.plotter.update_plots(self.contacts.detections,
-                                      self.agent.xy,
-                                      self.agent.xy_hist,
-                                      self.timer.time_remaining)
-            self.plotter.update_rewards(self.reward.rewards[-1])
+                self._plotter.updatecovmap(self._griddata.cov_map)
+            self._plotter.update_plots(self._contacts.detections,
+                                       self._agent.xy,
+                                       self._agent.xy_hist,
+                                       self._timer.time_remaining)
+            self._plotter.update_rewards(self._reward.rewards[-1])
 
-        self.check_termination()
+        self._check_termination()
 
-        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
+        return self._timer.time_remaining, ag_pos, occ_map, cov_map, cts
 
     def get_obs(self):
-        ag_pos = self.griddata.agent
-        occ_map = self.griddata.occ_map
-        cov_map = self.griddata.cov_map
-        cts = self.griddata.cts
+        ag_pos = self._griddata.agent
+        occ_map = self._griddata.occ_map
+        cov_map = self._griddata.cov_map
+        cts = self._griddata.cts
 
-        return self.timer.time_remaining, ag_pos, occ_map, cov_map, cts
+        return self._timer.time_remaining, ag_pos, occ_map, cov_map, cts
 
     def prev_step(self):
-        if self.action_id > 0:
+        if self._action_id > 0:
             # rewind the agent
-            rm_cov = self.agent.rewind_one_step()
-            self.griddata.add_agent_pos(self.agent.xy)
-            self.timer.update_time(-self.timer.t_step)
+            rm_cov = self._agent.rewind_one_step()
+            self._griddata.add_agent_pos(self._agent.xy)
+            self._timer.update_time(-self._timer.t_step)
             if rm_cov:
-                if self.agent.ind0 != 0:
+                if self._agent.ind0 != 0:
                     # delete the cov_maps
-                    self.griddata.remove_cov_map(self.covmap.map_stack.pop())
+                    self._griddata.remove_cov_map(self._covmap.map_stack.pop())
                     # check how many scans have been done
-                    n_scans = len(self.covmap.map_stack)
+                    n_scans = len(self._covmap.map_stack)
                     det_rm = []
                     # Check whether the contacts need to be removed
-                    for d in self.contacts.detections[-1::]:
+                    for d in self._contacts.detections[-1::]:
                         if d.scan_n >= n_scans:
-                            det_rm.append(self.contacts.detections.pop())
-                    self.griddata.remove_contacts(det_rm)
+                            det_rm.append(self._contacts.detections.pop())
+                    self._griddata.remove_contacts(det_rm)
 
-            if hasattr(self, 'plotter'):
-                self.plotter.updatecovmap(self.griddata.cov_map)
-                self.plotter.update_plots(self.contacts.detections,
-                                          self.agent.xy,
-                                          self.agent.xy_hist,
-                                          self.timer.time_remaining)
-                self.plotter.update_rewards(self.reward.rewards[-1])
+            if hasattr(self, '_plotter'):
+                self._plotter.updatecovmap(self._griddata.cov_map)
+                self._plotter.update_plots(self._contacts.detections,
+                                           self._agent.xy,
+                                           self._agent.xy_hist,
+                                           self._timer.time_remaining)
+                self._plotter.update_rewards(self._reward.rewards[-1])
 
-            self.action_id -= 1
+            self._action_id -= 1
 
-    def next_step_pb(self):
+    def _next_step_pb(self):
         # Get current action_id data and following step cov_map
-        t, ap, ip, cm, cn, N_g, ah = self.playback.get_next_step(
-            self.action_id)
-        _, _, _, cm2, _, _, _ = self.playback.get_next_step(self.action_id+1)
+        t, ap, ip, cm, cn, N_g, ah = self._playback.get_next_step(
+            self._action_id)
+        _, _, _, cm2, _, _, _ = self._playback.get_next_step(self._action_id+1)
 
         # Move the agent
-        self.agent.move_to_position(ap)
+        self._agent.move_to_position(ap)
 
         # Assemble the groups list
         grps = []
-        [grps.append(self.contacts.group_loc(cn, n)) for n in range(N_g)]
+        [grps.append(self._contacts.group_loc(cn, n)) for n in range(N_g)]
 
         # Update the time based on whether the boat has gone forward or back
-        if self.action_id > self.action_id_prev:
-            self.timer.update_time(self.timer.t_step)
+        if self._action_id > self._action_id_prev:
+            self._timer.update_time(self._timer.t_step)
         else:
-            self.timer.update_time(-self.timer.t_step)
+            self._timer.update_time(-self._timer.t_step)
 
         # Update the griddata outputs
-        self.griddata.add_agent_pos(ap)
-        self.griddata.add_contacts(cn)
-        if self.action_id > self.action_id_prev:
+        self._griddata.add_agent_pos(ap)
+        self._griddata.add_contacts(cn)
+        if self._action_id > self._action_id_prev:
             if isinstance(cm, np.ndarray):
-                self.griddata.add_cov_map(cm)
+                self._griddata.add_cov_map(cm)
         else:
             if isinstance(cm2, np.ndarray):
-                self.griddata.remove_cov_map(cm2)
+                self._griddata.remove_cov_map(cm2)
 
-        if hasattr(self, 'plotter'):
-            self.plotter.updatetime(self.timer.time_remaining,
-                                    self.timer.time_lim)
-            self.plotter.agent_plt.updateagent(ap)
-            self.plotter.agent_plt.updatetrackhist(ah)
-            self.plotter.agent_plt.updatetarget(ip, ip)
-            self.plotter.updatecovmap(self.griddata.cov_map)
-            self.plotter.updatecontacts(cn)
-            self.plotter.updategroups(grps)
-            self.plotter.update_rewards(self.reward.rewards[self.action_id],
-                                        self.reward.rewards[-1])
-            self.plotter.update_rew_time(self.timer.time_elapsed)
-            self.plotter.draw()
+        if hasattr(self, '_plotter'):
+            self._plotter.updatetime(self._timer.time_remaining,
+                                     self._timer.time_lim)
+            self._plotter.agent_plt.updateagent(ap)
+            self._plotter.agent_plt.updatetrackhist(ah)
+            self._plotter.agent_plt.updatetarget(ip, ip)
+            self._plotter.updatecovmap(self._griddata.cov_map)
+            self._plotter.updatecontacts(cn)
+            self._plotter.updategroups(grps)
+            self._plotter.update_rewards(self._reward.rewards[self._action_id],
+                                         self._reward.rewards[-1])
+            self._plotter.update_rew_time(self._timer.time_elapsed)
+            self._plotter.draw()
 
-        if hasattr(self, 'agent_viz'):
-            ag_pos = self.griddata.agent
-            occ_map = self.griddata.occ_map
-            cov_map = self.griddata.cov_map
-            cts = self.griddata.cts
-            self.agent_viz.update(ag_pos,
-                                  occ_map,
-                                  cov_map[0],
-                                  cts)
-        self.action_id_prev = self.action_id
+        if hasattr(self, '_agent_viz'):
+            ag_pos = self._griddata.agent
+            occ_map = self._griddata.occ_map
+            cov_map = self._griddata.cov_map
+            cts = self._griddata.cts
+            self._agent_viz.update(ag_pos,
+                                   occ_map,
+                                   cov_map[0],
+                                   cts)
+        self._action_id_prev = self._action_id
 
-    def add_group(self, c_inds):
+    def _add_group(self, c_inds):
         # Add the contacts to a cluster and add to log
-        self.contacts.dets_to_clus(c_inds)
-        g_n, c_inds = self.contacts.add_group()
-        self.logger.add_group(g_n, c_inds)
+        self._contacts.dets_to_clus(c_inds)
+        g_n, c_inds = self._contacts.add_group()
+        self._logger.add_group(g_n, c_inds)
 
-    def remove_group(self, g_inds):
+    def _remove_group(self, g_inds):
         # Get rid of a group
-        self.contacts.remove_group(g_inds)
-        self.logger.ungroup(g_inds)
+        self._contacts.remove_group(g_inds)
+        self._logger.ungroup(g_inds)
 
     def add_aux_info(self, aux_info):
-        self.logger.add_auxinfo(aux_info)
+        self._logger.add_auxinfo(aux_info)
 
-    def round_to_angle(self, x0, y0, x1, y1):
+    def _round_to_angle(self, x0, y0, x1, y1):
         ang_r = 10
         r_r = 1
         x_d = x1 - x0
@@ -516,84 +524,84 @@ class SurveySimulationGrid():
         return x, y
 
     def reset(self):
-        self.map_obj.setup()
-        self.contacts.generate_targets(self.map_obj.occ)
+        self._map_obj.setup()
+        self._contacts.generate_targets(self._map_obj.occ)
         # reinitialise everything
         # get new st positions
-        ag_st = self.map_obj.get_agent_start()
-        self.agent.reset(new_st_pos=ag_st)
-        self.covmap.reset()
-        self.contacts.reset()
-        self.timer.reset()
-        self.logger.reset(self.agent.xy,
-                          self.contacts.truth,
-                          self.map_obj.map_lims,
-                          self.timer.time_lim)
-        self.griddata.reset(agent_xy=self.agent.xy)
-        self.reward.reset()
-        if hasattr(self, 'plotter'):
-            self.plotter.reset(new_agent_start=self.agent.xy,
-                               new_map_lims=self.map_obj.map_lims,
-                               new_map_img=self.map_obj.img)
+        ag_st = self._map_obj.get_agent_start()
+        self._agent.reset(new_st_pos=ag_st)
+        self._covmap.reset()
+        self._contacts.reset()
+        self._timer.reset()
+        self._logger.reset(self._agent.xy,
+                           self._contacts.truth,
+                           self._map_obj.map_lims,
+                           self._timer.time_lim)
+        self._griddata.reset(agent_xy=self._agent.xy)
+        self._reward.reset()
+        if hasattr(self, '_plotter'):
+            self._plotter.reset(new_agent_start=self._agent.xy,
+                                new_map_lims=self._map_obj.map_lims,
+                                new_map_img=self._map_obj.img)
         self.end_episode = False
 
     def save_episode(self, ep_n=None):
 
-        self.logger.save_data(ep_n)
+        self._logger.save_data(ep_n)
         self.end_episode = True
 
-    def terminate_episode(self):
-        if hasattr(self, 'plotter'):
-            self.plotter.reveal_targets(self.contacts.truth)
-            self.plotter.remove_temp()
-        self.timer.time_remaining = 0
+    def _terminate_episode(self):
+        if hasattr(self, '_plotter'):
+            self._plotter.reveal_targets(self._contacts.truth)
+            self._plotter.remove_temp()
+        self._timer.time_remaining = 0
         self.end_episode = True
 
     # mouse and keyboard callback functions
-    def mouse_move(self, event):
+    def _mouse_move(self, event):
         # check it's inside the axes
-        if event.inaxes != self.plotter.ax.axes:
+        if event.inaxes != self._plotter.ax.axes:
             return
         # grab the x,y coords
         x_i, y_i = event.xdata, event.ydata
-        if not self.end_episode and self.groupswitch:
-            x0, y0 = self.agent.xy[0], self.agent.xy[1]
-            if self.snaptoangle:
-                x, y = self.round_to_angle(x0, y0, x_i, y_i)
+        if not self.end_episode and self._groupswitch:
+            x0, y0 = self._agent.xy[0], self._agent.xy[1]
+            if self._snaptoangle:
+                x, y = self._round_to_angle(x0, y0, x_i, y_i)
             else:
                 x, y = x_i, y_i
-            self.timer.update_temp((x0, y0),
-                                   (x, y),
-                                   self.agent.xy_hist[0],
-                                   self.agent.speed0)
-            self.plotter.update_temp(x0, y0,
-                                     x, y,
-                                     self.covmap.leadinleadout,
-                                     self.covmap.min_scan_l,
-                                     self.covmap.scan_width)
-            self.plotter.updatetime(self.timer.time_temp,
-                                    self.timer.time_lim)
+            self._timer.update_temp((x0, y0),
+                                    (x, y),
+                                    self._agent.xy_hist[0],
+                                    self._agent.speed0)
+            self._plotter.update_temp(x0, y0,
+                                      x, y,
+                                      self._covmap.leadinleadout,
+                                      self._covmap.min_scan_l,
+                                      self._covmap.scan_width)
+            self._plotter.updatetime(self._timer.time_temp,
+                                     self._timer.time_lim)
 
-    def on_key_manual(self, event):
+    def _on_key_manual(self, event):
         # normal operation if episode is ongoing
         if not self.end_episode:
             if event.key == "z":
-                self.snaptoangle = not self.snaptoangle
+                self._snaptoangle = not self._snaptoangle
             elif event.key == 'shift':
-                self.plotter.remove_temp()
-                self.groupswitch = not self.groupswitch
+                self._plotter.remove_temp()
+                self._groupswitch = not self._groupswitch
 
             elif event.key == 'a':
                 # group the selected
-                g_n, c_inds = self.contacts.add_group()
+                g_n, c_inds = self._contacts.add_group()
                 # only add if there's any points in the group
                 if c_inds:
                     # update plot
-                    self.plotter.updategroups(self.contacts.det_grp)
+                    self._plotter.updategroups(self._contacts.det_grp)
                     # log new grouping
-                    self.logger.add_group(g_n, c_inds)
+                    self._logger.add_group(g_n, c_inds)
             elif event.key == '#':
-                self.terminate_episode()
+                self._terminate_episode()
             elif event.key == '=':
                 print('Reveal locations with # before saving')
         else:
@@ -604,70 +612,70 @@ class SurveySimulationGrid():
         if event.key == 'enter':
             self.reset()
 
-    def on_key_playback(self, event):
+    def _on_key_playback(self, event):
         if event.key == 'left':
-            if self.action_id == 0:
+            if self._action_id == 0:
                 return
             else:
-                self.play = False
-                if self.action_id == self.action_id_prev:
-                    self.action_id -= 1
+                self._play = False
+                if self._action_id == self._action_id_prev:
+                    self._action_id -= 1
 
         elif event.key == 'right':
-            if self.action_id >= self.playback.ep_end:
+            if self._action_id >= self._playback.ep_end:
                 return
             else:
-                self.play = False
-                if self.action_id == self.action_id_prev:
-                    self.action_id += 1
+                self._play = False
+                if self._action_id == self._action_id_prev:
+                    self._action_id += 1
 
         elif event.key == ' ':
-            self.play = not self.play
+            self._play = not self._play
 
-    def on_click(self, event):
-        if event.inaxes != self.plotter.ax.axes:
+    def _on_click(self, event):
+        if event.inaxes != self._plotter.ax.axes:
             return
 
-        if not self.end_episode and self.groupswitch:
+        if not self.end_episode and self._groupswitch:
             # add new coordinate to agent
             x_i, y_i = event.xdata, event.ydata
-            x0, y0 = self.agent.xy[0], self.agent.xy[1]
+            x0, y0 = self._agent.xy[0], self._agent.xy[1]
 
             # check if the requested position is in an occupied space
-            if not self.map_obj.occ[round(y_i), round(x_i)]:
+            if not self._map_obj.occ[round(y_i), round(x_i)]:
                 # check that the path doesn't go through occupied spaces
-                cp = self.map_obj.check_path(x0, y0, x_i, y_i)
+                cp = self._map_obj.check_path(x0, y0, x_i, y_i)
                 if cp:
                     # snap to angle or not
-                    if self.snaptoangle:
-                        x, y = self.round_to_angle(x0, y0, x_i, y_i)
+                    if self._snaptoangle:
+                        x, y = self._round_to_angle(x0, y0, x_i, y_i)
                     else:
                         x, y = x_i, y_i
-                    self.agent.destination_req((x, y))
+                    self._agent.destination_req((x, y))
                 else:
-                    self.plotter.p.set_facecolor((1, 1, 1))
+                    self._plotter.p.set_facecolor((1, 1, 1))
             else:
-                self.plotter.p.set_facecolor((1, 1, 1))
+                self._plotter.p.set_facecolor((1, 1, 1))
 
-    def on_pick(self, event):
-        if not self.end_episode and not self.groupswitch:
+    def _on_pick(self, event):
+        if not self.end_episode and not self._groupswitch:
             inds = list(event.ind)
             # check if it's a detection
-            if event.artist == self.plotter.det_plt:
-                plot_det_inds = [n.det_n for n in self.contacts.detections
+            if event.artist == self._plotter.det_plt:
+                plot_det_inds = [n.det_n for n in self._contacts.detections
                                  if n.group_n == None]
                 c_inds = [plot_det_inds[n] for n in inds]
-                self.contacts.dets_to_clus(c_inds)
-                self.plotter.updatecontacts(self.contacts.detections)
-            elif event.artist == self.plotter.det_grp_plt:
+                self._contacts.dets_to_clus(c_inds)
+                self._plotter.updatecontacts(self._contacts.detections)
+            elif event.artist == self._plotter.det_grp_plt:
                 # get groud indices
-                g_inds = [self.contacts.det_grp[n].group_n for n in inds]
-                self.contacts.remove_group(g_inds)
+                g_inds = [self._contacts.det_grp[n].group_n for n in inds]
+                self._contacts.remove_group(g_inds)
                 # update plot
-                self.plotter.updatecontacts(self.contacts.detections)
-                self.plotter.updategroups(self.contacts.det_grp)
+                self._plotter.updatecontacts(self._contacts.detections)
+                self._plotter.updategroups(self._contacts.det_grp)
                 # log ungrouped
-                self.logger.ungroup(g_inds)
+                self._logger.ungroup(g_inds)
 
 
 if __name__ == '__main__':
