@@ -976,8 +976,12 @@ class GriddedData:
         for cts in contacts:
             xy = [cts.x, cts.y]
             c_xy_rnd = np.int16(base * np.round(np.divide(xy, base)))
-            self.cts[c_xy_rnd[1],
-                     c_xy_rnd[0]] += 1
+            if c_xy_rnd[0] > 0 \
+                    and c_xy_rnd[1] > 0 \
+                    and c_xy_rnd[0] < self.occ_map.shape[1] \
+                    and c_xy_rnd[1] < self.occ_map.shape[0]:
+                self.cts[c_xy_rnd[1],
+                         c_xy_rnd[0]] += 1
 
     def remove_contacts(self,
                         contacts):
