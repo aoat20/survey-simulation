@@ -377,6 +377,10 @@ class Timer:
                               xy2)/agent_spd
         return t_elapsed
 
+    def tick(self):
+        self.time_remaining -= self.t_step
+        self.time_elapsed += self.t_step
+
     def reset(self):
         self.time_remaining = self.time_lim
         self.time_elapsed = 0
