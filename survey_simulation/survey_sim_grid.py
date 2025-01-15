@@ -225,14 +225,14 @@ class SurveySimulationGrid():
         while True:
             if self._play:
                 if self._action_id >= self._playback.ep_end:
-                    self._plotter.pause(0.1)
+                    self._plotter.pause(0.04)
                 else:
                     self._action_id += 1
-                    # self._plotter.pause(0.04)
+                    self._plotter.pause(0.04)
             if self._action_id_prev != self._action_id:
                 self._next_step_pb()
 
-            self._plotter.pause(0.0001)
+            self._plotter.pause(0.04)
 
     def _playback_step(self):
         if self._action_id >= self._playback.ep_end:
@@ -269,7 +269,6 @@ class SurveySimulationGrid():
         while self._action_id > 0:
             self._action_id -= 1
             self._next_step_pb()
-        self._griddata.reset()
 
     def _load_params(self,
                      param_file: str):
