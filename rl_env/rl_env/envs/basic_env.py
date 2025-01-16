@@ -77,7 +77,7 @@ class BasicEnv(gym.Env):
 
         if self.obs_type == 'coverage_occupancy':
             #get the occupancy map and coverage map shape
-            occ_map_shape = self.survey_simulation.map_obj.occ.shape
+            occ_map_shape = self.survey_simulation.get_map_shape()
             cov_map_shape = occ_map_shape #coverage map is the same shape as the occupancy map
             #concatenate the occupancy map and coverage map to get the observation space in to get a 3d observation space
             obs_shape = (3, *occ_map_shape)
@@ -93,9 +93,7 @@ class BasicEnv(gym.Env):
 
         observation = self._get_observation()
         # reward = self.reward_function.get_reward()
-        reward = self.survey_simulation.reward.rewards[-1]
-
-
+        reward = self.survey_simulation.get_reward(inst_or_cum='i')
         terminated = False
         truncated = False
         info = {}

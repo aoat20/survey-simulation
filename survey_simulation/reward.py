@@ -38,7 +38,7 @@ class RewardFunction():
 
     def __init__(self, **kwargs):
 
-        self.reward_function_id = kwargs.get('reward_id', 'default')
+        self.reward_function_id = kwargs.get('reward_id', 'incremental')
         self.rewards = [0]
         self.reward = 0
 
@@ -118,3 +118,38 @@ def custom_reward_function1(survey_simulation, value=1):
     reward = value
     # Example: reward based on some custom criteria
     return reward
+
+
+
+@register_reward_function('incremental')
+def incremental_reward_function(obs_dict: dict, step_scale=10000):
+    '''
+    Default reward function for the RL environment
+    step scale is the scale of the reward for current path reward
+    '''
+    cov_map = obs_dict.get('cov_map')
+    path_l = obs_dict.get('path_length')
+
+    cov_map_non_zero = np.count_nonzero(np.array(cov_map), axis=0)
+    current_cov = np.sum(cov_map_non_zero) / np.prod(cov_map_non_zero.shape)
+
+    # Calculate the difference with the previous value
+    reward_difference = current_cov - incremental_reward_function.previous_cov
+
+    # Update the previous reward value
+    incremental_reward_function.previous_cov =  current_cov
+
+    # Calculate the step reward
+    step_reward = path_l / step_scale
+
+    # step_reward = (path_l-1) / step_scale
+    
+    # step_reward = 0
+
+    # Total reward
+    reward = reward_difference + step_reward
+
+    return reward
+
+# Initialize the previous_reward attribute
+incremental_reward_function.previous_cov = 0    
