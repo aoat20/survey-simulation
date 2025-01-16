@@ -257,6 +257,9 @@ class SurveySimulationGrid():
         else:
             raise ValueError("Invalid reward. Expected i or c")
 
+    def get_map_shape(self):
+        return self._map_obj.occ.shape
+
     def _run_to_end(self):
         running = True
         while running:
