@@ -6,7 +6,7 @@ from stable_baselines3 import PPO
 # MODEL_PATH = '/Users/edwardclark/Documents/SURREY/survey-simulation/models/5hixnng4/model.zip'
 # MODEL_PATH = '/Users/edwardclark/Desktop/ppo_model_server_86500000_steps.zip'
 # MODEL_PATH ='/Volumes/eprc20/ppo_model_server_9500000_steps.zip'
-MODEL_PATH = '/Users/edward/Downloads/model (1).zip'
+MODEL_PATH = '/Users/edward/Downloads/model (26).zip'
 # MODEL_PATH = '/Users/edward/Documents/university/coding/survey-simulation/wandb/run-20241118_205309-l8pi0a9i/files/model.zip'
 
 # MODEL_PATH ='/Users/edward/Downloads/latest.zip'
