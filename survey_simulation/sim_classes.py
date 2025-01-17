@@ -16,8 +16,10 @@ class Agent:
                  xy_start=[0, 0],
                  course=None,
                  speed=0,
-                 scan_thr=0):
-        #
+                 scan_thr=0,
+                 vessel_type=''):
+        # Agent parameters
+        self.vessel_type = vessel_type
         self.speed0 = speed
         self.speed_req = speed
         self.speed_change_rate = 0
@@ -25,6 +27,8 @@ class Agent:
         self.course = course
         self.course_req = course
         self.course_change_rate = 0
+        self.cpa = None
+        self.tcpa = None
 
         self.xy_start_candidates = xy_start
 
@@ -72,16 +76,30 @@ class Agent:
                                  [np.array(self.xy)],
                                  axis=0)
         # Adjust speed and course
+        speed_change = self.speed_change_rate*t_elapsed
         if self.speed_req > self.speed:
-            self.speed = self.speed + self.speed_change_rate*t_elapsed
+            if self.speed_req > self.speed + speed_change:
+                self.set_speed(self.speed + speed_change)
+            else:
+                self.set_speed(self.speed_req)
         elif self.speed_req < self.speed:
-            self.speed = self.speed - self.speed_change_rate*t_elapsed
+            if self.speed_req < self.speed - speed_change:
+                self.set_speed(self.speed - speed_change)
+            else:
+                self.set_speed(self.speed_req)
 
         if self.course_req is not None:
+            self.course_change = self.course_change_rate*t_elapsed
             if self.course_req > self.course:
-                self.course = self.course + self.course_change_rate*t_elapsed
+                if self.course_req > self.course + self.course_change:
+                    self.set_course(self.course + self.course_change)
+                else:
+                    self.set_course(self.course_req)
             elif self.course_req < self.course:
-                self.course = self.course - self.course_change_rate*t_elapsed
+                if self.course_req < self.course - self.course_change:
+                    self.set_course(self.course - self.course_change)
+                else:
+                    self.set_course(self.course_req)
 
     def rewind_one_step(self):
         # Change to the previous positin

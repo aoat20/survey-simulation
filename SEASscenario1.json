@@ -1,24 +1,41 @@
 {
-    "params": 
-    {
+    "params": {
         "test": 10,
         "test2": 11
     },
-    "vessel_details": 
-    [
+    "vessel_details": [
         {
             "vessel": "CandidateMass",
             "speed": 10,
-            "course": 90, 
-            "waypoints": [[50.209767, -4.174147],
-                          [50.302217, -4.159364]]
+            "max_speed": 25,
+            "course": 90,
+            "speed_change_rate": 0.1,
+            "turning_rate": 0.1,
+            "waypoints": [
+                [
+                    50.209767,
+                    -4.174147
+                ],
+                [
+                    50.302217,
+                    -4.159364
+                ]
+            ]
         },
         {
             "vessel": "CruiseLiner",
             "speed": 10,
-            "course": 330, 
-            "waypoints": [[50.156267, -4.033694],
-                          [50.209342, -3.914953]]
+            "course": 330,
+            "waypoints": [
+                [
+                    50.156267,
+                    -4.033694
+                ],
+                [
+                    50.209342,
+                    -3.914953
+                ]
+            ]
         }
     ]
 }

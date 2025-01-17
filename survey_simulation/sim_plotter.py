@@ -3,6 +3,7 @@ import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
 import numpy as np
 import math
+from matplotlib.widgets import TextBox
 
 
 class Plotter:
@@ -178,6 +179,13 @@ class Plotter:
         self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(t_remaining,
                                                                         self.tl))
 
+    def add_minutecounter(self):
+        ax = self.fig.add_axes([0.8, 0.0, 0.2, 0.05])
+        self.min_count_box = TextBox(ax, '')
+
+    def update_minutecounter(self, time_s):
+        self.min_count_box.set_val(f'{time_s/60:.1f} mins')
+
     def update_rewards(self,
                        current_reward: float,
                        final_reward: float = 0):
@@ -305,7 +313,8 @@ class Plotter:
                      xy0,
                      speed=[],
                      course=[],
-                     color='blue'):
+                     color='blue',
+                     ag_type=''):
             # store initial position
             self.xy0 = xy0
             # agent position
@@ -337,8 +346,8 @@ class Plotter:
                                             zorder=3)
 
             if not speed == []:
-                self.txtlbl = ax.annotate(f'Speed:{speed:.2f} \nCourse:{course:.0f}',
-                                          xy0)
+                self._ag_type = ag_type
+                self.txtlbl = ax.annotate(f'{self._ag_type}', xy0)
 
         def updateagent(self, xy):
             x, y = xy[0], xy[1]
@@ -363,10 +372,22 @@ class Plotter:
             self.agentpos.set_marker((3, 0, -course))
             self.agentpos.set_markersize(20)
 
-        def addspeedandcourse(self, xy, speed, course):
+        def update_label(self,
+                         xy,
+                         speed,
+                         course,
+                         cpa,
+                         tcpa):
             self.txtlbl.set_position(xy)
-            self.txtlbl.set_text(
-                f'Speed:{speed:.1f}kn \n   Course:{course:.0f}deg')
+            if cpa is not None:
+                self.txtlbl.set_text(
+                    f'{self._ag_type}\n'
+                    f'{speed:.1f}kts {course:.0f}deg\n'
+                    f'   CPA {cpa:.1f}yds {tcpa/60:.0f}mins')
+            else:
+                self.txtlbl.set_text(
+                    f'{self._ag_type}\n'
+                    f'   {speed:.1f}kts {course:.0f}deg')
 
 
 class SurveyPlotter(Plotter):
@@ -459,7 +480,7 @@ class SEASPlotter(Plotter):
     def __init__(self,
                  map_lims,
                  xy_start,
-                 xy_start_vessels):
+                 vessels):
         self.setup_plot()
         self.set_map_lims(map_lims)
         self.agent = self.AgentPlot(ax=self.ax,
@@ -468,12 +489,13 @@ class SEASPlotter(Plotter):
                                     speed=0,
                                     course=0)
         self.vessels = []
-        for xy in xy_start_vessels:
+        for v in vessels:
             self.vessels.append(self.AgentPlot(self.ax,
-                                               xy,
+                                               v.xy,
                                                color='red',
                                                speed=0,
-                                               course=0))
+                                               course=0,
+                                               ag_type=v.vessel_type))
         self.updateps(1)
         self.ax.figure.canvas.draw()
 
