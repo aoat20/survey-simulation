@@ -206,47 +206,12 @@ class SurveySimulationGrid():
         elif mode == "playback" and hasattr(self, '_plotter'):
             self._plotting_loop_pb()
 
-    def _plotting_loop(self):
-        while True:
-            tic = time.time()
-            if self._agent.speed != 0:
-                self.next_step()
-            t_el = np.clip(time.time() - tic, 0, 0.04)
-            self._plotter.pause(0.0401 - t_el)
-
+# Public functions
     def waypoint_reached(self):
         if self._agent.speed == 0:
             return True
         else:
             return False
-
-    def _plotting_loop_pb(self):
-        self._plotter.draw()
-        while True:
-            if self._play:
-                if self._action_id >= self._playback.ep_end:
-                    self._plotter.pause(0.04)
-                else:
-                    self._action_id += 1
-                    self._plotter.pause(0.04)
-            if self._action_id_prev != self._action_id:
-                self._next_step_pb()
-
-            self._plotter.pause(0.04)
-
-    def _playback_step(self):
-        if self._action_id >= self._playback.ep_end:
-            return 0
-        else:
-            self._action_id += 1
-            self._next_step_pb()
-            return 1
-
-    def _compute_reward(self):
-        # Get all the observations for the rewards function
-        obs_dict = {'cov_map': self._griddata.cov_map,
-                    'path_length': self._agent.get_current_path_len()}
-        self._reward.get_reward(obs_dict=obs_dict)
 
     def get_reward(self,
                    inst_or_cum='i'):
@@ -259,62 +224,6 @@ class SurveySimulationGrid():
 
     def get_map_shape(self):
         return self._map_obj.occ.shape
-
-    def _run_to_end(self):
-        running = True
-        while running:
-            running = self._playback_step()
-            self._compute_reward()
-
-        self._run_to_start()
-
-    def _run_to_start(self):
-        while self._action_id > 0:
-            self._action_id -= 1
-            self._next_step_pb()
-
-    def _load_params(self,
-                     param_file: str):
-        param_dict = {}
-        with open(param_file) as fh:
-            for line in fh:
-                # handle empty lines and commented
-                if line.strip() and not line[0] == '#':
-                    # split keys and values
-                    key, value = [x.strip()
-                                  for x in line.strip().split(':', 1)]
-                    # check whether array
-                    if "(" in value or "[" in value:
-                        value = value.replace("(", "").replace(")", "")
-                        value = value.replace("[", "").replace("]", "")
-                        # check whether float
-                        if "." in value:
-                            param_dict[key] = [float(item)
-                                               for item in value.split(',')]
-                        else:
-                            param_dict[key] = [int(item)
-                                               for item in value.split(',')]
-                    elif '"' in value:
-                        param_dict[key] = value[1:-1]
-                    else:
-                        if "." in value:
-                            param_dict[key] = float(value)
-                        else:
-                            param_dict[key] = int(value)
-
-        return param_dict
-
-    def _check_termination(self):
-        # Termination conditions
-        # Timer runs out
-        if self._timer.time_remaining < 0:
-            self._terminate_episode()
-            self.termination_reason = "Run out of time"
-        # Hits land
-        if self._map_obj.is_occupied(self._agent.xy):
-            self._terminate_episode()
-            self.termination_reason = "Grounded"
-        # Returns home
 
     def new_action(self,
                    action_type: str,
@@ -444,6 +353,129 @@ class SurveySimulationGrid():
 
             self._action_id -= 1
 
+    def add_aux_info(self, aux_info):
+        self._logger.add_auxinfo(aux_info)
+
+    def reset(self):
+        self._map_obj.setup()
+        self._contacts.generate_targets(self._map_obj.occ)
+        # reinitialise everything
+        # get new st positions
+        ag_st = self._map_obj.get_agent_start()
+        self._agent.reset(new_st_pos=ag_st)
+        self._covmap.reset()
+        self._contacts.reset()
+        self._timer.reset()
+        self._logger.reset(self._agent.xy,
+                           self._contacts.truth,
+                           self._map_obj.map_lims,
+                           self._timer.time_lim)
+        self._griddata.reset(agent_xy=self._agent.xy)
+        self._reward.reset()
+        if hasattr(self, '_plotter'):
+            self._plotter.reset(new_agent_start=self._agent.xy,
+                                new_map_lims=self._map_obj.map_lims,
+                                new_map_img=self._map_obj.img)
+        self.end_episode = False
+
+    def save_episode(self, ep_n=None):
+
+        self._logger.save_data(ep_n)
+        self.end_episode = True
+
+# Other functions
+    def _plotting_loop(self):
+        while True:
+            tic = time.time()
+            if self._agent.speed != 0:
+                self.next_step()
+            t_el = np.clip(time.time() - tic, 0, 0.04)
+            self._plotter.pause(0.0401 - t_el)
+
+    def _plotting_loop_pb(self):
+        self._plotter.draw()
+        while True:
+            if self._play:
+                if self._action_id >= self._playback.ep_end:
+                    self._plotter.pause(0.04)
+                else:
+                    self._action_id += 1
+                    self._plotter.pause(0.04)
+            if self._action_id_prev != self._action_id:
+                self._next_step_pb()
+
+            self._plotter.pause(0.04)
+
+    def _playback_step(self):
+        if self._action_id >= self._playback.ep_end:
+            return 0
+        else:
+            self._action_id += 1
+            self._next_step_pb()
+            return 1
+
+    def _compute_reward(self):
+        # Get all the observations for the rewards function
+        obs_dict = {'cov_map': self._griddata.cov_map,
+                    'path_length': self._agent.get_current_path_len()}
+        self._reward.get_reward(obs_dict=obs_dict)
+
+    def _run_to_end(self):
+        running = True
+        while running:
+            running = self._playback_step()
+            self._compute_reward()
+
+        self._run_to_start()
+
+    def _run_to_start(self):
+        while self._action_id > 0:
+            self._action_id -= 1
+            self._next_step_pb()
+
+    def _load_params(self,
+                     param_file: str):
+        param_dict = {}
+        with open(param_file) as fh:
+            for line in fh:
+                # handle empty lines and commented
+                if line.strip() and not line[0] == '#':
+                    # split keys and values
+                    key, value = [x.strip()
+                                  for x in line.strip().split(':', 1)]
+                    # check whether array
+                    if "(" in value or "[" in value:
+                        value = value.replace("(", "").replace(")", "")
+                        value = value.replace("[", "").replace("]", "")
+                        # check whether float
+                        if "." in value:
+                            param_dict[key] = [float(item)
+                                               for item in value.split(',')]
+                        else:
+                            param_dict[key] = [int(item)
+                                               for item in value.split(',')]
+                    elif '"' in value:
+                        param_dict[key] = value[1:-1]
+                    else:
+                        if "." in value:
+                            param_dict[key] = float(value)
+                        else:
+                            param_dict[key] = int(value)
+
+        return param_dict
+
+    def _check_termination(self):
+        # Termination conditions
+        # Timer runs out
+        if self._timer.time_remaining < 0:
+            self._terminate_episode()
+            self.termination_reason = "Run out of time"
+        # Hits land
+        if self._map_obj.is_occupied(self._agent.xy):
+            self._terminate_episode()
+            self.termination_reason = "Grounded"
+        # Returns home
+
     def _next_step_pb(self):
         # Get current action_id data and following step cov_map
         t, ap, ip, cm, cn, N_g, ah = self._playback.get_next_step(
@@ -509,9 +541,6 @@ class SurveySimulationGrid():
         self._contacts.remove_group(g_inds)
         self._logger.ungroup(g_inds)
 
-    def add_aux_info(self, aux_info):
-        self._logger.add_auxinfo(aux_info)
-
     def _round_to_angle(self, x0, y0, x1, y1):
         ang_r = 10
         r_r = 1
@@ -525,33 +554,6 @@ class SurveySimulationGrid():
         y = rho_r * np.sin(phi_r) + y0
         return x, y
 
-    def reset(self):
-        self._map_obj.setup()
-        self._contacts.generate_targets(self._map_obj.occ)
-        # reinitialise everything
-        # get new st positions
-        ag_st = self._map_obj.get_agent_start()
-        self._agent.reset(new_st_pos=ag_st)
-        self._covmap.reset()
-        self._contacts.reset()
-        self._timer.reset()
-        self._logger.reset(self._agent.xy,
-                           self._contacts.truth,
-                           self._map_obj.map_lims,
-                           self._timer.time_lim)
-        self._griddata.reset(agent_xy=self._agent.xy)
-        self._reward.reset()
-        if hasattr(self, '_plotter'):
-            self._plotter.reset(new_agent_start=self._agent.xy,
-                                new_map_lims=self._map_obj.map_lims,
-                                new_map_img=self._map_obj.img)
-        self.end_episode = False
-
-    def save_episode(self, ep_n=None):
-
-        self._logger.save_data(ep_n)
-        self.end_episode = True
-
     def _terminate_episode(self):
         if hasattr(self, '_plotter'):
             self._plotter.reveal_targets(self._contacts.truth)
@@ -559,7 +561,7 @@ class SurveySimulationGrid():
         self._timer.time_remaining = 0
         self.end_episode = True
 
-    # mouse and keyboard callback functions
+# mouse and keyboard callback functions
     def _mouse_move(self, event):
         # check it's inside the axes
         if event.inaxes != self._plotter.ax.axes:
