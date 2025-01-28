@@ -23,7 +23,7 @@ class SEASSimulation():
             "SEASscenario1.json")
 
         self.timer = Timer(time_lim=60*60,
-                           t_step=1)
+                           t_step=0.1)
 
         # Get all the other vessels start points
         vessels_xy = [v.xy for v in self.vessels]
@@ -68,7 +68,8 @@ class SEASSimulation():
         cpa = np.abs(dv_y*dx - dv_x*dy)/np.sqrt(dv_x**2 + dv_y**2)
         cpa_yds = self.m_to_yds(cpa)
         tcpa = - (dv_x*dx + dv_y*dy)/(dv_x**2 + dv_y**2)
-
+        if tcpa < 0:
+            tcpa = 0
         return cpa_yds, tcpa
 
     def m_to_yds(self,
@@ -86,7 +87,7 @@ class SEASSimulation():
         self.course_req_box = TextBox(course_ax,
                                       "Course change (deg)",
                                       textalignment="left")
-        self.course_req_box.set_val(self.agent.course)
+        self.course_req_box.set_val(f"{self.agent.course:.0f}")
         self.course_req_box.on_submit(self.change_course)
         ax_c_pl1 = plotter.fig.add_axes([0.35, 0.9375, 0.05, 0.0375])
         self.b_c_pl1 = Button(ax_c_pl1, '+1')
@@ -137,7 +138,7 @@ class SEASSimulation():
                 if self.ps_change:
                     self.ps_change = False
                     plotter.updateps(self.playspeed)
-            plotter.pause(1)
+            plotter.pause(self.timer.t_step/self.playspeed)
             plotter.draw()
 
     def next_step(self):
@@ -212,6 +213,7 @@ class SEASSimulation():
                               vessel_type='agent')
                 agent.course_change_rate = v["turning_rate"]
                 agent.speed_change_rate = v["speed_change_rate"]
+                # agent.speed_max = v['max_speed']*0.5144
             elif v['vessel'] == "CruiseLiner":
                 vessels.append(Agent(xy_start=xy_st,
                                      speed=speed_mps,
@@ -243,6 +245,7 @@ class SEASSimulation():
                      new_speed_kn):
         if abs(float(new_speed_kn) - self.agent.speed*1.944) > 0.1:
             speed_mps_req = float(new_speed_kn)*0.5144
+            # if self.agent.speed_max > self.agent.speed_req:
             self.agent.speed_req = speed_mps_req
 
     def update_speed_box(self, change):
@@ -257,7 +260,7 @@ class SEASSimulation():
 
     def update_course_box(self, change):
         course_new = self.agent.course_req+change
-        self.course_req_box.set_val(f"{course_new:.1f}")
+        self.course_req_box.set_val(f"{course_new:.0f}")
 
     def course_add_one(self, event):
         self.update_course_box(1)

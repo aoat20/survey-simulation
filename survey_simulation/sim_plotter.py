@@ -383,7 +383,7 @@ class Plotter:
                 self.txtlbl.set_text(
                     f'{self._ag_type}\n'
                     f'{speed:.1f}kts {course:.0f}deg\n'
-                    f'   CPA {cpa:.1f}yds {tcpa/60:.0f}mins')
+                    f'   CPA {cpa:.0f}yds {tcpa/60:.0f}mins')
             else:
                 self.txtlbl.set_text(
                     f'{self._ag_type}\n'
