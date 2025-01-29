@@ -315,7 +315,7 @@ class Plotter:
                      course=[],
                      color='blue',
                      ag_type='',
-                     waypoints=[[], []]):
+                     waypoints=[]):
             # store initial position
             self.xy0 = xy0
             # agent position
@@ -326,8 +326,12 @@ class Plotter:
                                      markerfacecolor=color,
                                      zorder=5)
 
-            wp_x = [xy[0] for xy in waypoints]
-            wp_y = [xy[1] for xy in waypoints]
+            if waypoints:
+                wp_x = [xy[0] for xy in waypoints]
+                wp_y = [xy[1] for xy in waypoints]
+            else:
+                wp_x = []
+                wp_y = []
             self.target_pos, = ax.plot(wp_x,
                                        wp_y,
                                        marker="x",
@@ -350,7 +354,9 @@ class Plotter:
 
             if not speed == []:
                 self._ag_type = ag_type
-                self.txtlbl = ax.annotate(f'{self._ag_type}', xy0)
+                self.txtlbl = ax.annotate(f'{self._ag_type}',
+                                          xy0,
+                                          zorder=5)
 
         def updateagent(self, xy):
             x, y = xy[0], xy[1]
