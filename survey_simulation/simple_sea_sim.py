@@ -16,7 +16,6 @@ class SEASSimulation():
                  plotter=True):
         # Load parameters
         self.playspeed = 1
-        self._fig_closed = False
 
         # Load the desired scene
         params, self.agent, self.vessels, xy_lim = self.load_scene(
@@ -135,8 +134,6 @@ class SEASSimulation():
         while True:
             if self.play:
                 self.next_step()
-                if self._fig_closed:
-                    break
                 self.update_plot(plotter_obj)
                 # Control handlers
                 if self.ps_change:
@@ -253,7 +250,7 @@ class SEASSimulation():
         pass
 
     def _on_close(self, event):
-        self._fig_closed = True
+        exit(1)
 
     def change_course(self,
                       new_course):

@@ -391,7 +391,7 @@ class SurveySimulationGrid():
 
 # Other functions
     def _on_close(self, event):
-        self._fig_closed = True
+        exit(1)
 
     def _plotting_loop(self):
         while True:
@@ -400,8 +400,6 @@ class SurveySimulationGrid():
                 self.next_step()
             t_el = np.clip(time.time() - tic, 0, 0.04)
             self._plotter.pause(0.0401 - t_el)
-            if self._fig_closed:
-                break
 
     def _plotting_loop_pb(self):
         self._plotter.draw()
