@@ -30,6 +30,7 @@ class SurveySimulationGrid():
         # initiate flags
         self.end_episode = False
         self._play = False
+        self._fig_closed = False
         self._action_id = 0
 
         if mode == 'manual':
@@ -183,6 +184,7 @@ class SurveySimulationGrid():
                                           n_looks=params['N_looks'])
             self._plotter.show(blocking=False)
             self._plotter.draw()
+            self._plotter.fig.canvas.mpl_connect('close_event', self._on_close)
 
         # Set up event handlers
         if mode == "manual":
@@ -388,6 +390,9 @@ class SurveySimulationGrid():
         self.end_episode = True
 
 # Other functions
+    def _on_close(self, event):
+        self._fig_closed = True
+
     def _plotting_loop(self):
         while True:
             tic = time.time()
@@ -395,6 +400,8 @@ class SurveySimulationGrid():
                 self.next_step()
             t_el = np.clip(time.time() - tic, 0, 0.04)
             self._plotter.pause(0.0401 - t_el)
+            if self._fig_closed:
+                break
 
     def _plotting_loop_pb(self):
         self._plotter.draw()

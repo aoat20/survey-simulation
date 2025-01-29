@@ -1,7 +1,4 @@
 import numpy as np
-import os
-import time
-import sys
 from survey_simulation.sim_plotter import SEASPlotter
 from survey_simulation.sim_classes import Timer, Playback, Logger, Map, Agent
 import json
@@ -19,6 +16,7 @@ class SEASSimulation():
                  plotter=True):
         # Load parameters
         self.playspeed = 1
+        self._fig_closed = False
 
         # Load the desired scene
         params, self.agent, self.vessels, xy_lim = self.load_scene(
@@ -35,6 +33,8 @@ class SEASSimulation():
                                                                       10000])]),
                                       agent=self.agent,
                                       vessels=self.vessels)
+            plotter_obj.fig.canvas.mpl_connect('close_event', self._on_close)
+
         plotter_obj.add_minutecounter()
         pos_tmp = plotter_obj.ax.get_position()
         plotter_obj.ax.set_position([pos_tmp.x0,
@@ -135,11 +135,14 @@ class SEASSimulation():
         while True:
             if self.play:
                 self.next_step()
+                if self._fig_closed:
+                    break
                 self.update_plot(plotter_obj)
                 # Control handlers
                 if self.ps_change:
                     self.ps_change = False
                     plotter_obj.updateps(self.playspeed)
+
             plotter_obj.pause(self.timer.t_step/self.playspeed)
             plotter_obj.draw()
 
@@ -233,7 +236,6 @@ class SEASSimulation():
         f.close()
 
         xy_lim_tmp_np = np.array(xy_lim_tmp)
-        print(xy_lim_tmp_np[0, :])
         # Get limits of travel for vessel travel
         xy_lim = [xy_lim_tmp_np[:, 0].min(),
                   xy_lim_tmp_np[:, 0].max(),
@@ -249,6 +251,9 @@ class SEASSimulation():
 
     def reset(self):
         pass
+
+    def _on_close(self, event):
+        self._fig_closed = True
 
     def change_course(self,
                       new_course):
