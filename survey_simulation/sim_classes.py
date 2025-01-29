@@ -17,7 +17,8 @@ class Agent:
                  course=None,
                  speed=0,
                  scan_thr=0,
-                 vessel_type=''):
+                 vessel_type='',
+                 waypoints=[]):
         # Agent parameters
         self.vessel_type = vessel_type
         self.speed0 = speed
@@ -38,6 +39,7 @@ class Agent:
         self.destination = self.xy
         self.distance_dest = np.inf
         self.distance_travelled = 0
+        self.waypoints = waypoints
 
         # If the course is not set, don't move
         if course is None:

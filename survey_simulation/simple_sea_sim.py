@@ -13,41 +13,44 @@ class SEASSimulation():
     """_summary_
     """
 
-    def __init__(self):
+    def __init__(self,
+                 scenario_n=1,
+                 mode='manual',
+                 plotter=True):
         # Load parameters
-        mode = 'manual'
         self.playspeed = 1
 
         # Load the desired scene
         params, self.agent, self.vessels, xy_lim = self.load_scene(
-            "SEASscenario1.json")
+            f"SEASscenario{scenario_n}.json")
 
         self.timer = Timer(time_lim=60*60,
                            t_step=0.1)
 
-        # Get all the other vessels start points
-        vessels_xy = [v.xy for v in self.vessels]
+        if plotter:
+            plotter_obj = SEASPlotter(map_lims=([sum(x) for x in zip(xy_lim,
+                                                                     [-10000,
+                                                                      10000,
+                                                                      -10000,
+                                                                      10000])]),
+                                      agent=self.agent,
+                                      vessels=self.vessels)
+        plotter_obj.add_minutecounter()
+        pos_tmp = plotter_obj.ax.get_position()
+        plotter_obj.ax.set_position([pos_tmp.x0,
+                                     pos_tmp.y0,
+                                     pos_tmp.width,
+                                     pos_tmp.height*0.9])
 
-        if mode == 'manual' or mode == 'test':
-            plotter = SEASPlotter(map_lims=([sum(x) for x in zip(xy_lim,
-                                                                 [-10000,
-                                                                  10000,
-                                                                  -10000,
-                                                                  10000])]),
-                                  xy_start=self.agent.xy,
-                                  vessels=self.vessels)
-        plotter.add_minutecounter()
-        pos_tmp = plotter.ax.get_position()
-        plotter.ax.set_position([pos_tmp.x0,
-                                 pos_tmp.y0,
-                                 pos_tmp.width,
-                                 pos_tmp.height*0.9])
-
-        self.add_controls(plotter)
-        self.plotting_loop(plotter)
+        self.add_controls(plotter_obj)
+        self.plotting_loop(plotter_obj)
 
     def check_failure_conditions(self):
-        pass
+        # Check distance to each other vessel
+        for v in self.vessels:
+            if self.m_to_yds(self.check_distances(self.agent.xy,
+                                                  v.xy)) < 1000:
+                print('you lose')
 
     def check_distances(self, xy1, xy2):
         d_m = np.sqrt((xy1[0]-xy2[0])**2 + (xy1[1]-xy2[1])**2)
@@ -67,10 +70,10 @@ class SEASSimulation():
         # CPA and TCPA
         cpa = np.abs(dv_y*dx - dv_x*dy)/np.sqrt(dv_x**2 + dv_y**2)
         cpa_yds = self.m_to_yds(cpa)
-        tcpa = - (dv_x*dx + dv_y*dy)/(dv_x**2 + dv_y**2)
-        if tcpa < 0:
-            tcpa = 0
-        return cpa_yds, tcpa
+        tcpa_s = - (dv_x*dx + dv_y*dy)/(dv_x**2 + dv_y**2)
+        if tcpa_s < 0:
+            tcpa_s = 0
+        return cpa_yds, tcpa_s
 
     def m_to_yds(self,
                  m):
@@ -123,8 +126,8 @@ class SEASSimulation():
         self.playspeed_button3.on_clicked(self.playspeed_x10)
 
     def plotting_loop(self,
-                      plotter: SEASPlotter):
-        plotter.show(blocking=False)
+                      plotter_obj: SEASPlotter):
+        plotter_obj.show(blocking=False)
 
         self.play = True
         self.ps_change = False
@@ -132,37 +135,35 @@ class SEASSimulation():
         while True:
             if self.play:
                 self.next_step()
-                self.update_plot(plotter)
-                plotter.update_minutecounter(self.timer.time_elapsed)
+                self.update_plot(plotter_obj)
                 # Control handlers
                 if self.ps_change:
                     self.ps_change = False
-                    plotter.updateps(self.playspeed)
-            plotter.pause(self.timer.t_step/self.playspeed)
-            plotter.draw()
+                    plotter_obj.updateps(self.playspeed)
+            plotter_obj.pause(self.timer.t_step/self.playspeed)
+            plotter_obj.draw()
 
     def next_step(self):
         self.timer.update_time(self.timer.t_step*self.playspeed)
         self.agent.advance_one_step(self.timer.t_step*self.playspeed)
         for v in self.vessels:
             v.advance_one_step(self.timer.t_step*self.playspeed)
-            cpa, tcpa = self.compute_cpa(self.agent.xy,
-                                         self.agent.course,
-                                         self.agent.speed,
-                                         v.xy,
-                                         v.course,
-                                         v.speed)
-            v.cpa = cpa
-            v.tcpa = tcpa
+            v.cpa_yds, v.tcpa_s = self.compute_cpa(self.agent.xy,
+                                                   self.agent.course,
+                                                   self.agent.speed,
+                                                   v.xy,
+                                                   v.course,
+                                                   v.speed)
+        self.check_failure_conditions()
 
     def update_plot(self,
-                    plotter: SEASPlotter):
-
-        self.update_agentplots(plotter.agent,
+                    plotter_obj: SEASPlotter):
+        plotter_obj.update_minutecounter(self.timer.time_elapsed)
+        self.update_agentplots(plotter_obj.agent,
                                self.agent)
         n = 0
         for v in self.vessels:
-            self.update_agentplots(plotter.vessels[n],
+            self.update_agentplots(plotter_obj.vessels[n],
                                    v)
             n += 1
 
@@ -176,8 +177,8 @@ class SEASSimulation():
         plot_obj.update_label(agent.xy,
                               agent.speed*1.944,
                               agent.course,
-                              agent.cpa,
-                              agent.tcpa)
+                              agent.cpa_yds,
+                              agent.tcpa_s)
         if len(agent.xy_hist) > 1:
             plot_obj.updatetrackhist(agent.xy_hist)
 
@@ -186,7 +187,12 @@ class SEASSimulation():
         # load the boat locations and speeds from the conf file
 
         # Set up utm conversion
-        p = pyproj.Proj(proj='utm', zone=32, ellps='WGS84')
+        p = pyproj.Proj(proj='utm',
+                        zone=30,
+                        ellps='WGS84',
+                        preserve_units=False)
+
+        grid_conv = 1.5
 
         # Open and load the config file
         f = open(config_file)
@@ -199,38 +205,47 @@ class SEASSimulation():
         xy_lim_tmp = []
         for v in conf['vessel_details']:
 
-            xy_lim_tmp.extend(v["waypoints"])
             # Get the vessel details
-            xy_st = p(v["waypoints"][0][1],
-                      v["waypoints"][0][0])
+            way_points = []
+            for wp in v["waypoints"]:
+                way_points.append(p(self.convert_dms_to_dec(wp[1]),
+                                    self.convert_dms_to_dec(wp[0])))
+            xy_lim_tmp.extend(way_points)
+
             speed_mps = 0.5144*v["speed"]
             course = v["course"]
             # AI agent
             if v['vessel'] == "CandidateMass":
-                agent = Agent(xy_start=xy_st,
+                agent = Agent(xy_start=way_points[0],
                               speed=speed_mps,
-                              course=course,
-                              vessel_type='agent')
+                              course=course+grid_conv,
+                              vessel_type='agent',
+                              waypoints=way_points)
                 agent.course_change_rate = v["turning_rate"]
                 agent.speed_change_rate = v["speed_change_rate"]
                 # agent.speed_max = v['max_speed']*0.5144
             elif v['vessel'] == "CruiseLiner":
-                vessels.append(Agent(xy_start=xy_st,
+                vessels.append(Agent(xy_start=way_points[0],
                                      speed=speed_mps,
-                                     course=course,
-                                     vessel_type='cruise liner'))
+                                     course=course+grid_conv,
+                                     vessel_type='cruise liner',
+                                     waypoints=way_points))
         f.close()
 
         xy_lim_tmp_np = np.array(xy_lim_tmp)
-        xy_lim_utm = p(xy_lim_tmp_np[:, 1],
-                       xy_lim_tmp_np[:, 0])
-
+        print(xy_lim_tmp_np[0, :])
         # Get limits of travel for vessel travel
-        xy_lim = [xy_lim_utm[0].min(),
-                  xy_lim_utm[0].max(),
-                  xy_lim_utm[1].min(),
-                  xy_lim_utm[1].max()]
+        xy_lim = [xy_lim_tmp_np[:, 0].min(),
+                  xy_lim_tmp_np[:, 0].max(),
+                  xy_lim_tmp_np[:, 1].min(),
+                  xy_lim_tmp_np[:, 1].max()]
         return params, agent, vessels, xy_lim
+
+    def convert_dms_to_dec(self, tude):
+        multiplier = 1 if tude[-1] in ['N', 'E'] else -1
+        coord_dec = multiplier * \
+            sum(float(x) / 60 ** n for n, x in enumerate(tude[:-1].split('-')))
+        return coord_dec
 
     def reset(self):
         pass

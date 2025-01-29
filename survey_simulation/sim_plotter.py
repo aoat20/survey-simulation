@@ -314,7 +314,8 @@ class Plotter:
                      speed=[],
                      course=[],
                      color='blue',
-                     ag_type=''):
+                     ag_type='',
+                     waypoints=[[], []]):
             # store initial position
             self.xy0 = xy0
             # agent position
@@ -325,15 +326,17 @@ class Plotter:
                                      markerfacecolor=color,
                                      zorder=5)
 
-            self.target_pos, = ax.plot([],
-                                       [],
+            wp_x = [xy[0] for xy in waypoints]
+            wp_y = [xy[1] for xy in waypoints]
+            self.target_pos, = ax.plot(wp_x,
+                                       wp_y,
                                        marker="x",
+                                       color="w",
                                        markersize=10,
-                                       markeredgecolor="red",
+                                       markeredgecolor=color,
                                        markerfacecolor=color,
                                        zorder=4)
             # agent track
-
             # intended
             self.track_int_plt, = ax.plot(xy0[0], xy0[1],
                                           ':',
@@ -479,15 +482,16 @@ class SEASPlotter(Plotter):
 
     def __init__(self,
                  map_lims,
-                 xy_start,
+                 agent,
                  vessels):
         self.setup_plot()
         self.set_map_lims(map_lims)
         self.agent = self.AgentPlot(ax=self.ax,
-                                    xy0=xy_start,
+                                    xy0=agent.xy,
                                     color='blue',
                                     speed=0,
-                                    course=0)
+                                    course=0,
+                                    waypoints=agent.waypoints)
         self.vessels = []
         for v in vessels:
             self.vessels.append(self.AgentPlot(self.ax,
@@ -495,7 +499,8 @@ class SEASPlotter(Plotter):
                                                color='red',
                                                speed=0,
                                                course=0,
-                                               ag_type=v.vessel_type))
+                                               ag_type=v.vessel_type,
+                                               waypoints=v.waypoints))
         self.updateps(1)
         self.ax.figure.canvas.draw()
 
