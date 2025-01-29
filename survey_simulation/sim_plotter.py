@@ -330,7 +330,7 @@ class Plotter:
                                        marker="x",
                                        markersize=10,
                                        markeredgecolor="red",
-                                       markerfacecolor="red",
+                                       markerfacecolor=color,
                                        zorder=4)
             # agent track
 

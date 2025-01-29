@@ -27,8 +27,8 @@ class Agent:
         self.course = course
         self.course_req = course
         self.course_change_rate = 0
-        self.cpa = None
-        self.tcpa = None
+        self.cpa_yds = None
+        self.tcpa_s = None
 
         self.xy_start_candidates = xy_start
 
@@ -117,15 +117,15 @@ class Agent:
     def destination_req(self,
                         xy):
         # start of leg
-        xy0 = self.xy_hist[-1]
+        self.xy0 = self.xy_hist[-1]
         # end of leg
         self.destination = xy
         # distance to the destination
-        self.distance_dest = np.sqrt((xy[0]-xy0[0])**2
-                                     + (xy[1]-xy0[1])**2)
+        self.distance_dest = np.sqrt((xy[0]-self.xy0[0])**2
+                                     + (xy[1]-self.xy0[1])**2)
         # compute course and set
-        course = np.rad2deg(np.arctan2(xy[0]-xy0[0],
-                                       xy[1]-xy0[1]))
+        course = np.rad2deg(np.arctan2(xy[0]-self.xy0[0],
+                                       xy[1]-self.xy0[1]))
         self.set_speedandcourse(self.speed0, course)
         self.distance_travelled = 0
 
