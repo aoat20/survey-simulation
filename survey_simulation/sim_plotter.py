@@ -4,6 +4,7 @@ from matplotlib.colors import hsv_to_rgb
 import numpy as np
 import math
 from matplotlib.widgets import TextBox
+from random import random, randint
 
 
 class Plotter:
@@ -17,6 +18,7 @@ class Plotter:
         plt.show()
 
     def pause(self, t):
+        self.fig.canvas.draw_idle()
         plt.pause(t)
 
     def draw(self):
@@ -26,6 +28,10 @@ class Plotter:
     def setup_plot(self):
         # set up empty plot
         self.fig, self.ax = plt.subplots()
+        self.fig.canvas.mpl_connect('close_event', self._on_close)
+
+    def _on_close(self, event):
+        exit(1)
 
     def set_map_lims(self,
                      map_lims):
@@ -39,6 +45,7 @@ class Plotter:
                          xmax=map_lims[1])
         self.ax.set_ylim(ymin=map_lims[2],
                          ymax=map_lims[3])
+        self.ax.set_aspect('equal')
 
     def setup_map(self, map_img):
         # get the map image and show
@@ -307,6 +314,26 @@ class Plotter:
                                  alpha=0.5,
                                  zorder=1)
 
+    def explode(self, xy):
+        for n in range(20):
+            n_col = randint(0, 2)
+            col = ['red',
+                   'orange',
+                   'yellow']
+            rnd_sz = random()*100
+            n_sds = randint(5, 15)
+            rnd_rot = random()*360
+            rnd_disp1 = random()*500
+            rnd_disp2 = random()*500
+
+            self.ax.plot([xy[0]+rnd_disp1],
+                         [xy[1]+rnd_disp2],
+                         marker=(n_sds, 1, rnd_rot),
+                         markerfacecolor=col[n_col],
+                         markersize=rnd_sz,
+                         zorder=10)
+            self.pause(0.02)
+
     class AgentPlot:
         def __init__(self,
                      ax,
@@ -339,7 +366,7 @@ class Plotter:
                                        markersize=10,
                                        markeredgecolor=color,
                                        markerfacecolor=color,
-                                       zorder=4)
+                                       zorder=2)
             # agent track
             # intended
             self.track_int_plt, = ax.plot(xy0[0], xy0[1],
@@ -391,12 +418,12 @@ class Plotter:
             if cpa is not None:
                 self.txtlbl.set_text(
                     f'{self._ag_type}\n'
-                    f'{speed:.1f}kts {course:.0f}deg\n'
+                    f'{speed:.1f}kts {course:.1f}deg\n'
                     f'   CPA {cpa:.0f}yds {tcpa/60:.0f}mins')
             else:
                 self.txtlbl.set_text(
                     f'{self._ag_type}\n'
-                    f'   {speed:.1f}kts {course:.0f}deg')
+                    f'   {speed:.1f}kts {course:.1f}deg')
 
 
 class SurveyPlotter(Plotter):
@@ -508,6 +535,7 @@ class SEASPlotter(Plotter):
                                                ag_type=v.vessel_type,
                                                waypoints=v.waypoints))
         self.updateps(1)
+        self.add_minutecounter()
         self.ax.figure.canvas.draw()
 
 
