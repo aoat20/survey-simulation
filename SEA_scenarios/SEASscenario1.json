@@ -1,15 +1,15 @@
 {
     "params": {
-        "test": 10,
+        "t_step": 1,
         "test2": 11
     },
     "vessel_details": [
         {
-            "vessel": "CandidateMass",
+            "vessel": "agent",
             "speed": 10,
             "max_speed": 25,
             "course": 90,
-            "speed_change_rate": 0.1,
+            "speed_change_rate": 0.01,
             "turning_rate": 0.2,
             "waypoints": [
                 [
@@ -23,7 +23,7 @@
             ]
         },
         {
-            "vessel": "CruiseLiner",
+            "vessel": "cruiseliner1",
             "speed": 10,
             "course": 330,
             "waypoints": [
