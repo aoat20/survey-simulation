@@ -1,6 +1,6 @@
 {
     "params": {
-        "test": 10,
+        "t_step": 1,
         "test2": 11
     },
     "vessel_details": [
@@ -13,8 +13,8 @@
             "turning_rate": 0.2,
             "waypoints": [
                 [
-                    "50-05-42.3N",
-                    "4-4-37.80W"
+                    "50-05-42.30N",
+                    "04-04-37.80W"
                 ],
                 [
                     "50-09-40.68N",
@@ -28,7 +28,7 @@
         },
         {
             "vessel": "cruiseliner1",
-            "speed": 10,
+            "speed": 4,
             "course": 90,
             "waypoints": [
                 [

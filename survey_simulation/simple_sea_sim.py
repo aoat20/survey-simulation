@@ -50,6 +50,7 @@ class SEASSimulation():
 
     def get_obs(self):
         obs_dict = {}
+        obs_dict['time_s'] = self._timer.time_elapsed
         obs_dict['agent'] = {"speed": self._agent.speed,
                              "course": self._agent.course,
                              "coords_utm": self._agent.xy}
@@ -182,6 +183,13 @@ class SEASSimulation():
         if not self.mission_failed:
             self._timer.update_time(t)
             self._agent.advance_one_step(t)
+            # check if course and speed changes have been reached
+            if self._agent.course_req == self._agent.course:
+                self.course_reached = True
+            if self._agent.speed_req == self._agent.speed:
+                self.speed_reached = True
+
+            # Update all other vessels
             for v in self._vessels:
                 v.advance_one_step(t)
                 v.cpa_yds, v.tcpa_s = self._compute_cpa(self._agent.xy,
@@ -190,8 +198,10 @@ class SEASSimulation():
                                                         v.xy,
                                                         v.course,
                                                         v.speed)
-
+            # Check for failure
             self._check_failure_conditions()
+
+            # Update the plotter
             if hasattr(self, '_plotter_obj'):
                 self._update_plot()
                 self._plotter_obj.pause(0.0001)
