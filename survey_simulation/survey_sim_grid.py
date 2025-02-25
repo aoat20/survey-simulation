@@ -150,7 +150,10 @@ class SurveySimulationGrid():
                                      agent_xy=self._agent.xy)
         self._timer = Timer(params['time_lim'],
                             params['t_step'])
-        self._reward = RewardFunction(reward_id=params['reward_id'])
+        if "reward_id" in params:
+            self._reward = RewardFunction(reward_id=params['reward_id'])
+        else:
+            self._reward = RewardFunction()
 
         if mode == 'playback':
             self._run_to_end()
