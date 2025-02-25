@@ -30,6 +30,7 @@ class SurveySimulationGrid():
         # initiate flags
         self.end_episode = False
         self._play = False
+        self._fig_closed = False
         self._action_id = 0
 
         if mode == 'manual':
@@ -310,6 +311,10 @@ class SurveySimulationGrid():
                                        self._agent.xy,
                                        self._agent.xy_hist,
                                        self._timer.time_remaining)
+
+            if all(self._agent.destination != self._agent.xy_hist[0]):
+                self._plotter.agent_plt.updatetarget(self._agent.destination,
+                                                     self._agent.xy0)
             self._plotter.update_rewards(self._reward.rewards[-1])
 
         self._check_termination()

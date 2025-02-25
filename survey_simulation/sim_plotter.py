@@ -3,6 +3,8 @@ import matplotlib.patches as patches
 from matplotlib.colors import hsv_to_rgb
 import numpy as np
 import math
+from matplotlib.widgets import TextBox
+from random import random, randint
 
 
 class Plotter:
@@ -16,6 +18,7 @@ class Plotter:
         plt.show()
 
     def pause(self, t):
+        self.fig.canvas.draw_idle()
         plt.pause(t)
 
     def draw(self):
@@ -25,6 +28,10 @@ class Plotter:
     def setup_plot(self):
         # set up empty plot
         self.fig, self.ax = plt.subplots()
+        self.fig.canvas.mpl_connect('close_event', self._on_close)
+
+    def _on_close(self, event):
+        exit(1)
 
     def set_map_lims(self,
                      map_lims):
@@ -38,6 +45,7 @@ class Plotter:
                          xmax=map_lims[1])
         self.ax.set_ylim(ymin=map_lims[2],
                          ymax=map_lims[3])
+        self.ax.set_aspect('equal')
 
     def setup_map(self, map_img):
         # get the map image and show
@@ -178,6 +186,13 @@ class Plotter:
         self.ax.set_title("Time remaining: {:.0f} of {:.0f}secs".format(t_remaining,
                                                                         self.tl))
 
+    def add_minutecounter(self):
+        ax = self.fig.add_axes([0.8, 0.0, 0.2, 0.05])
+        self.min_count_box = TextBox(ax, '')
+
+    def update_minutecounter(self, time_s):
+        self.min_count_box.set_val(f'{time_s/60:.1f} mins')
+
     def update_rewards(self,
                        current_reward: float,
                        final_reward: float = 0):
@@ -299,13 +314,35 @@ class Plotter:
                                  alpha=0.5,
                                  zorder=1)
 
+    def explode(self, xy):
+        for n in range(20):
+            n_col = randint(0, 2)
+            col = ['red',
+                   'orange',
+                   'yellow']
+            rnd_sz = random()*100
+            n_sds = randint(5, 15)
+            rnd_rot = random()*360
+            rnd_disp1 = random()*500
+            rnd_disp2 = random()*500
+
+            self.ax.plot([xy[0]+rnd_disp1],
+                         [xy[1]+rnd_disp2],
+                         marker=(n_sds, 1, rnd_rot),
+                         markerfacecolor=col[n_col],
+                         markersize=rnd_sz,
+                         zorder=10)
+            self.pause(0.02)
+
     class AgentPlot:
         def __init__(self,
                      ax,
                      xy0,
                      speed=[],
                      course=[],
-                     color='blue'):
+                     color='blue',
+                     ag_type='',
+                     waypoints=[]):
             # store initial position
             self.xy0 = xy0
             # agent position
@@ -316,15 +353,21 @@ class Plotter:
                                      markerfacecolor=color,
                                      zorder=5)
 
-            self.target_pos, = ax.plot([],
-                                       [],
+            if waypoints:
+                wp_x = [xy[0] for xy in waypoints]
+                wp_y = [xy[1] for xy in waypoints]
+            else:
+                wp_x = []
+                wp_y = []
+            self.target_pos, = ax.plot(wp_x,
+                                       wp_y,
                                        marker="x",
+                                       color="w",
                                        markersize=10,
-                                       markeredgecolor="red",
-                                       markerfacecolor="red",
-                                       zorder=4)
+                                       markeredgecolor=color,
+                                       markerfacecolor=color,
+                                       zorder=2)
             # agent track
-
             # intended
             self.track_int_plt, = ax.plot(xy0[0], xy0[1],
                                           ':',
@@ -337,8 +380,10 @@ class Plotter:
                                             zorder=3)
 
             if not speed == []:
-                self.txtlbl = ax.annotate(f'Speed:{speed:.2f} \nCourse:{course:.0f}',
-                                          xy0)
+                self._ag_type = ag_type
+                self.txtlbl = ax.annotate(f'{self._ag_type}',
+                                          xy0,
+                                          zorder=5)
 
         def updateagent(self, xy):
             x, y = xy[0], xy[1]
@@ -363,10 +408,22 @@ class Plotter:
             self.agentpos.set_marker((3, 0, -course))
             self.agentpos.set_markersize(20)
 
-        def addspeedandcourse(self, xy, speed, course):
+        def update_label(self,
+                         xy,
+                         speed,
+                         course,
+                         cpa,
+                         tcpa):
             self.txtlbl.set_position(xy)
-            self.txtlbl.set_text(
-                f'Speed:{speed:.1f}kn \n   Course:{course:.0f}deg')
+            if cpa is not None:
+                self.txtlbl.set_text(
+                    f'{self._ag_type}\n'
+                    f'{speed:.1f}kts {course:.1f}deg\n'
+                    f'   CPA {cpa:.0f}yds {tcpa/60:.0f}mins')
+            else:
+                self.txtlbl.set_text(
+                    f'{self._ag_type}\n'
+                    f'   {speed:.1f}kts {course:.1f}deg')
 
 
 class SurveyPlotter(Plotter):
@@ -458,23 +515,27 @@ class SEASPlotter(Plotter):
 
     def __init__(self,
                  map_lims,
-                 xy_start,
-                 xy_start_vessels):
+                 agent,
+                 vessels):
         self.setup_plot()
         self.set_map_lims(map_lims)
         self.agent = self.AgentPlot(ax=self.ax,
-                                    xy0=xy_start,
+                                    xy0=agent.xy,
                                     color='blue',
                                     speed=0,
-                                    course=0)
+                                    course=0,
+                                    waypoints=agent.waypoints)
         self.vessels = []
-        for xy in xy_start_vessels:
+        for v in vessels:
             self.vessels.append(self.AgentPlot(self.ax,
-                                               xy,
+                                               v.xy,
                                                color='red',
                                                speed=0,
-                                               course=0))
+                                               course=0,
+                                               ag_type=v.vessel_type,
+                                               waypoints=v.waypoints))
         self.updateps(1)
+        self.add_minutecounter()
         self.ax.figure.canvas.draw()
 
 

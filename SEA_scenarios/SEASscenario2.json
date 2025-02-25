@@ -1,0 +1,45 @@
+{
+    "params": {
+        "t_step": 1,
+        "test2": 11
+    },
+    "vessel_details": [
+        {
+            "vessel": "agent",
+            "speed": 10,
+            "max_speed": 25,
+            "course": 46,
+            "speed_change_rate": 0.1,
+            "turning_rate": 0.2,
+            "waypoints": [
+                [
+                    "50-05-42.30N",
+                    "04-04-37.80W"
+                ],
+                [
+                    "50-09-40.68N",
+                    "3-58-4.3W"
+                ],
+                [
+                    "50-09-40.68N",
+                    "3-48-51.48W"
+                ]
+            ]
+        },
+        {
+            "vessel": "cruiseliner1",
+            "speed": 4,
+            "course": 90,
+            "waypoints": [
+                [
+                    "50-09-22.5N",
+                    "4-2-1.3W"
+                ],
+                [
+                    "50-09-22.5N",
+                    "3-55-48.15W"
+                ]
+            ]
+        }
+    ]
+}
