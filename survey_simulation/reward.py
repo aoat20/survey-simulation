@@ -120,9 +120,9 @@ def custom_reward_function1(survey_simulation, value=1):
     return reward
 
 
-
 @register_reward_function('incremental')
 def incremental_reward_function(obs_dict: dict, step_scale=10000):
+    
     '''
     Default reward function for the RL environment
     step scale is the scale of the reward for current path reward
