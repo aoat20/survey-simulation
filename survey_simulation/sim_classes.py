@@ -17,8 +17,11 @@ class Agent:
                  xy_start=[0, 0],
                  course=None,
                  speed=0,
-                 scan_thr=0):
-        #
+                 scan_thr=0,
+                 vessel_type='',
+                 waypoints=[]):
+        # Agent parameters
+        self.vessel_type = vessel_type
         self.speed0 = speed
         self.speed_req = speed
         self.speed_change_rate = 0
@@ -26,6 +29,8 @@ class Agent:
         self.course = course
         self.course_req = course
         self.course_change_rate = 0
+        self.cpa_yds = None
+        self.tcpa_s = None
 
         self.xy_start_candidates = xy_start
 
@@ -35,6 +40,7 @@ class Agent:
         self.destination = self.xy
         self.distance_dest = np.inf
         self.distance_travelled = 0
+        self.waypoints = waypoints
 
         # If the course is not set, don't move
         if course is None:
@@ -73,16 +79,30 @@ class Agent:
                                  [np.array(self.xy)],
                                  axis=0)
         # Adjust speed and course
+        speed_change = self.speed_change_rate*t_elapsed
         if self.speed_req > self.speed:
-            self.speed = self.speed + self.speed_change_rate*t_elapsed
+            if self.speed_req > self.speed + speed_change:
+                self.set_speed(self.speed + speed_change)
+            else:
+                self.set_speed(self.speed_req)
         elif self.speed_req < self.speed:
-            self.speed = self.speed - self.speed_change_rate*t_elapsed
+            if self.speed_req < self.speed - speed_change:
+                self.set_speed(self.speed - speed_change)
+            else:
+                self.set_speed(self.speed_req)
 
         if self.course_req is not None:
+            self.course_change = self.course_change_rate*t_elapsed
             if self.course_req > self.course:
-                self.course = self.course + self.course_change_rate*t_elapsed
+                if self.course_req > self.course + self.course_change:
+                    self.set_course(self.course + self.course_change)
+                else:
+                    self.set_course(self.course_req)
             elif self.course_req < self.course:
-                self.course = self.course - self.course_change_rate*t_elapsed
+                if self.course_req < self.course - self.course_change:
+                    self.set_course(self.course - self.course_change)
+                else:
+                    self.set_course(self.course_req)
 
     def rewind_one_step(self):
         # Change to the previous positin
@@ -100,15 +120,15 @@ class Agent:
     def destination_req(self,
                         xy):
         # start of leg
-        xy0 = self.xy_hist[-1]
+        self.xy0 = self.xy_hist[-1]
         # end of leg
         self.destination = xy
         # distance to the destination
-        self.distance_dest = np.sqrt((xy[0]-xy0[0])**2
-                                     + (xy[1]-xy0[1])**2)
+        self.distance_dest = np.sqrt((xy[0]-self.xy0[0])**2
+                                     + (xy[1]-self.xy0[1])**2)
         # compute course and set
-        course = np.rad2deg(np.arctan2(xy[0]-xy0[0],
-                                       xy[1]-xy0[1]))
+        course = np.rad2deg(np.arctan2(xy[0]-self.xy0[0],
+                                       xy[1]-self.xy0[1]))
         self.set_speedandcourse(self.speed0, course)
         self.distance_travelled = 0
 
