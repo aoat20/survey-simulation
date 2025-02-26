@@ -10,7 +10,9 @@ if __name__ == "__main__":
 
 
     N_ENVS = 4
-    MODEL_PATH = '/Users/edwardclark/Downloads/model - 2024-08-30T142506.573'
+    MODEL_PATH = '/Users/edward/Downloads/model.zip'
+
+    retrain = False
 
     config = {
         "policy_type": "CnnPolicy",
@@ -30,14 +32,18 @@ if __name__ == "__main__":
 
 
     env_kwargs = {
-            'params_filepath': '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/params.txt',
+            # 'params_filepath': '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/params.txt',
+            'params_filepath': '/Users/edward/Documents/university/coding/survey-simulation/rl_env/training/initial_params.txt',
             'save_logs': False,
             'obs_type': 'coverage_occupancy'
         }
     env = make_vec_env(config['env_name'], n_envs=N_ENVS, env_kwargs=env_kwargs)
     env = VecMonitor(env)
 
-    model = PPO.load(MODEL_PATH, env, verbose = 1,tensorboard_log=f"runs/{run.id}", device= 'mps')
+    if retrain:
+        model = PPO.load(MODEL_PATH, env, verbose = 1,tensorboard_log=f"runs/{run.id}", device= 'mps')
+    else:
+        
     model.learn(total_timesteps=config['total_timesteps'],
             callback=WandbCallback(
             gradient_save_freq=10000,

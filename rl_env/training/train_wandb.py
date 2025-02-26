@@ -10,15 +10,15 @@ import wandb
 
 
 
-RE_TRAIN_MODEL = False
-MODEL_PATH ='/Users/edward/Downloads/model.zip'
+RE_TRAIN_MODEL = True
+MODEL_PATH ='/Users/edward/Downloads/model (4).zip'
 
 
 
 if __name__ == "__main__":
 
 
-    N_ENVS = 6
+    N_ENVS = 8
 
     config = {
         "policy_type": "CnnPolicy",
@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
 
     env_kwargs = {
-            'params_filepath': '/Users/edward/Documents/university/coding/survey-simulation/rl_env/params.txt',
+            'params_filepath': '/Users/edward/Documents/university/coding/survey-simulation/rl_env/training/initial_params.txt',
             'save_logs': False,
             'obs_type': 'coverage_occupancy'
         }

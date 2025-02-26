@@ -7,8 +7,7 @@ print (gym.__version__)
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
-from survey_simulation import (SEASSimulation, SurveySimulation,
-                               SurveySimulationGrid)
+from survey_simulation import SurveySimulationGrid
 
 
 class BasicEnv(gym.Env):

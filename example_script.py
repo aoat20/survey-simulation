@@ -22,7 +22,7 @@ from survey_simulation import SurveySimulationGrid
 # path = '/Users/edward/Documents/university/coding/survey-simulation/data/'
 # path = '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/model_testing/data/'
 
-path = '/Users/edward/Documents/university/coding/survey-simulation/data/Episode502'
+path = '/Users/edward/Documents/university/coding/survey-simulation/data/Episode589'
 #episode 4, 15
 ss = SurveySimulationGrid('playback', 
                             log_file=path,

@@ -127,6 +127,8 @@ def incremental_reward_function(obs_dict: dict, step_scale=10000):
     Default reward function for the RL environment
     step scale is the scale of the reward for current path reward
     '''
+    #if the previous cov is negative reset to 0 as it is the first step
+
     cov_map = obs_dict.get('cov_map')
     path_l = obs_dict.get('path_length')
 
@@ -135,6 +137,9 @@ def incremental_reward_function(obs_dict: dict, step_scale=10000):
 
     # Calculate the difference with the previous value
     reward_difference = current_cov - incremental_reward_function.previous_cov
+
+    if reward_difference < 0:
+        reward_difference = 0
 
     # Update the previous reward value
     incremental_reward_function.previous_cov =  current_cov
