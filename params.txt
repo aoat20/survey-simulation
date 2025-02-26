@@ -4,7 +4,8 @@ play_speed: 1
 t_step: 1
 grid_spacing: 1
 plotter: 1
-agent_viz: 1
+agent_viz: 0
+reward_id: "default"
 
 # Agent properties
 random_start: 1
