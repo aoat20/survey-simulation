@@ -6,11 +6,15 @@ ss = SEASSimulation(scenario_n=4,
 
 # To set up scenario 4 in test mode
 ss = SEASSimulation(scenario_n=4,
-                    mode='test')
+                    mode='test',
+                    plotter=True)
 
-# Run until
+# Run until mission is finished
 while not ss.mission_finished:
+    # Advance to the next time step
     ss.next_step()
+
+    # Get the observations
     obs = ss.get_obs()
 
     # Do stuff based on the observations
@@ -20,5 +24,6 @@ while not ss.mission_finished:
         ss.set_speed(30)
     if obs['time_s'] > 350 and ss.course_reached:
         ss.set_course(-60)
+
 
 print(ss.termination_reason)
