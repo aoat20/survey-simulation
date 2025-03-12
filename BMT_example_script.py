@@ -1,6 +1,10 @@
 from survey_simulation import SEASSimulation
 
-# Set up scenario 4 in test mode
+# To run scenario 4 in manual mode
+ss = SEASSimulation(scenario_n=4,
+                    mode='manual')
+
+# To set up scenario 4 in test mode
 ss = SEASSimulation(scenario_n=4,
                     mode='test')
 
