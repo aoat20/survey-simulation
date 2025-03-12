@@ -17,7 +17,8 @@ class SEASSimulation():
                  plotter=True):
         # Load parameters
         self._playspeed = 1
-        self.mission_failed = False
+        self.mission_finished = False
+        self.termination_reason = ""
         self.course_reached = True
         self.speed_reached = True
 
@@ -54,10 +55,12 @@ class SEASSimulation():
         obs_dict['agent'] = {"speed": self._agent.speed,
                              "course": self._agent.course,
                              "coords_utm": self._agent.xy}
+        v: Agent
         for v in self._vessels:
             obs_dict[v.vessel_type] = {"speed": v.speed,
                                        "course": v.course,
                                        "coords_utm": v.xy,
+                                       "range_yds": v.range_yds,
                                        "cpa_yds": v.cpa_yds,
                                        "tcpa_s": v.tcpa_s}
 
@@ -74,13 +77,20 @@ class SEASSimulation():
         self._change_speed(speed_kn)
 
     def _check_failure_conditions(self):
-        # Check distance to each other vessel
-        for v in self._vessels:
-            if self._m_to_yds(self._check_distances(self._agent.xy,
-                                                    v.xy)) < 1000:
-                self.mission_failed = True
+        # Check if agent has reached the final waypoint
 
-    def _check_distances(self, xy1, xy2):
+        # Check distance to each other vessel
+        v: Agent
+        for v in self._vessels:
+            if v.range_yds < 1000:
+                self.mission_finished = True
+                self.termination_reason = f"FAILED. Got too close to {v.vessel_type}"
+
+        # Check when/where action is taken
+
+        # Check
+
+    def _get_distance(self, xy1, xy2):
         d_m = np.sqrt((xy1[0]-xy2[0])**2 + (xy1[1]-xy2[1])**2)
         return d_m
 
@@ -161,13 +171,13 @@ class SEASSimulation():
         self._ps_change = False
 
         while True:
-            if self._play and not self.mission_failed:
+            if self._play and not self.mission_finished:
                 self._next_step_manual()
                 # Control handlers
                 if self._ps_change:
                     self._ps_change = False
                     self._plotter_obj.updateps(self._playspeed)
-                if self.mission_failed:
+                if self.mission_finished:
                     self._plotter_obj.explode(self._agent.xy)
 
             self._plotter_obj.pause(1/25)
@@ -180,7 +190,7 @@ class SEASSimulation():
         self._adv_time(t)
 
     def _adv_time(self, t):
-        if not self.mission_failed:
+        if not self.mission_finished:
             self._timer.update_time(t)
             self._agent.advance_one_step(t)
             # check if course and speed changes have been reached
@@ -190,6 +200,7 @@ class SEASSimulation():
                 self.speed_reached = True
 
             # Update all other vessels
+            v: Agent
             for v in self._vessels:
                 v.advance_one_step(t)
                 v.cpa_yds, v.tcpa_s = self._compute_cpa(self._agent.xy,
@@ -198,6 +209,8 @@ class SEASSimulation():
                                                         v.xy,
                                                         v.course,
                                                         v.speed)
+                v.range_yds = self._get_distance(self._agent.xy,
+                                                 v.xy)
             # Check for failure
             self._check_failure_conditions()
 
