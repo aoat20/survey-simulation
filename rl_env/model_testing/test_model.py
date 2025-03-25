@@ -6,11 +6,11 @@ from stable_baselines3 import PPO
 # MODEL_PATH = '/Users/edwardclark/Documents/SURREY/survey-simulation/models/5hixnng4/model.zip'
 # MODEL_PATH = '/Users/edwardclark/Desktop/ppo_model_server_86500000_steps.zip'
 # MODEL_PATH ='/Volumes/eprc20/ppo_model_server_9500000_steps.zip'
-MODEL_PATH = '/Users/edward/Downloads/model (6).zip'
+MODEL_PATH = '/Users/edward/Downloads/model (2).zip'
 # MODEL_PATH = '/Users/edward/Documents/university/coding/survey-simulation/wandb/run-20241118_205309-l8pi0a9i/files/model.zip'
 
 # MODEL_PATH ='/Users/edward/Downloads/latest.zip'
-VIS_STEPS = 3000
+VIS_STEPS = 1000
 #create env 
 
 # env_kwargs = {
@@ -26,8 +26,7 @@ env_kwargs = {
             'save_logs': True,
             'obs_type': 'coverage_occupancy'
         }
-# # env_kwargs = {
-# #         'params_filepath': '/Users/edward/Documents/university/coding/survey-simulation/rl_env/training/initial_params.txt',
+# # env_kwargs = {# #         'params_filepath': '/Users/edward/Documents/university/coding/survey-simulation/rl_env/training/initial_params.txt',
 # #         'save_logs': False,
 # #         'obs_type': 'coverage_occupancy',
 # #         'reward_kwargs':{
@@ -57,8 +56,9 @@ for i in range(VIS_STEPS):
 
     # env.render()
     if terminated or truncated:
-        print ('terminated')
-        print ('reward', reward)
+        # print ('terminated')
+        if reward > 0:
+            print ('reward', reward)
         reward = 0
         obs , _ = env.reset()
 

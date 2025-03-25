@@ -149,7 +149,7 @@ def incremental_reward_function(obs_dict: dict, step_scale=10000):
 
     # step_reward = (path_l-1) / step_scale
     
-    # step_reward = 0
+    step_reward = 0
 
     # Total reward
     reward = reward_difference + step_reward

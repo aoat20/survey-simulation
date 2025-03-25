@@ -11,7 +11,7 @@ import wandb
 
 
 RE_TRAIN_MODEL = True
-MODEL_PATH ='/Users/edward/Downloads/model (4).zip'
+MODEL_PATH ='/Users/edward/Downloads/model.zip'
 
 
 
