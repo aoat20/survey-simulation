@@ -1,16 +1,12 @@
-import rl_env  # This will automatically register your custom environment
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import SubprocVecEnv, make_vec_env
 from stable_baselines3.common.vec_env import VecMonitor
 from wandb.integration.sb3 import WandbCallback
 
+import rl_env  # This will automatically register your custom environment
 import wandb
 
-
-
-
-
-RE_TRAIN_MODEL = True
+RE_TRAIN_MODEL = False
 MODEL_PATH ='/Users/edward/Downloads/model.zip'
 
 
@@ -38,7 +34,7 @@ if __name__ == "__main__":
 
 
     env_kwargs = {
-            'params_filepath': '/Users/edward/Documents/university/coding/survey-simulation/rl_env/training/initial_params.txt',
+            'params_filepath': '/Users/edwardclark/Documents/SURREY/survey-simulation/rl_env/training/initial_params.txt',
             'save_logs': False,
             'obs_type': 'coverage_occupancy'
         }
