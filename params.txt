@@ -6,6 +6,7 @@ grid_spacing: 1
 plotter: 1
 agent_viz: 0
 reward_id: "default"
+output_mat_size: 64
 
 # Agent properties
 random_start: 1
