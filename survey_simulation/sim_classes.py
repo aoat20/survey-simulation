@@ -646,8 +646,8 @@ class Map:
         ml = self.map_lims
         xy_rnd = np.int16(np.floor(xy))
 
-        xy_rnd[0] = np.clip(xy_rnd[0], 0, self.occ.shape[1])
-        xy_rnd[1] = np.clip(xy_rnd[1], 0, self.occ.shape[0])
+        xy_rnd[0] = np.clip(xy_rnd[0], 0, self.occ.shape[1]-1)
+        xy_rnd[1] = np.clip(xy_rnd[1], 0, self.occ.shape[0]-1)
 
         # check whether the coordinate is in an occupied
         if xy[0] < ml[0] or xy[0] > ml[1] or xy[1] < ml[2] or xy[1] > ml[3]:
