@@ -31,6 +31,7 @@ class Agent:
         self.course_change_rate = 0
         self.cpa_yds = None
         self.tcpa_s = None
+        self.range_yds = None
 
         self.xy_start_candidates = xy_start
 

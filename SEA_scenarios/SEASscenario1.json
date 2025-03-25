@@ -1,7 +1,10 @@
 {
     "params": {
-        "t_step": 1,
-        "test2": 11
+        "t_step": 1
+    },
+    "action_taken": {
+        "range_yds": 2000,
+        "tcpa_s": 210
     },
     "vessel_details": [
         {

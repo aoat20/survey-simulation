@@ -6,6 +6,7 @@ from survey_simulation.survey_classes import ContactDetections, CoverageMap
 from survey_simulation.sim_classes import Timer, Playback, Logger, Map, Agent, GriddedData
 from survey_simulation.reward import RewardFunction
 import matplotlib.pyplot as plt
+from skimage.measure import block_reduce
 
 
 class SurveySimulationGrid():
@@ -144,6 +145,10 @@ class SurveySimulationGrid():
                                    scan_width=params['scan_width'],
                                    nadir_width=params['nadir_width'])
 
+        if 'output_mat_size' in params:
+            self.gd_res = params['output_mat_size']
+        else:
+            self.gd_res = 0
         self._griddata = GriddedData(map_lims=self._map_obj.map_lims,
                                      angle_diff=params['min_scan_angle_diff'],
                                      occ_map=self._map_obj.occ,
@@ -294,11 +299,7 @@ class SurveySimulationGrid():
                         self._griddata.add_contacts(
                             [self._contacts.detections[-n_dets]])
 
-        ag_pos = self._griddata.agent
-        occ_map = self._griddata.occ_map
-        cov_map = self._griddata.cov_map
-        cts = self._griddata.cts
-
+        t_rem, ag_pos, occ_map, cov_map, cts = self.get_obs()
         self._compute_reward()
 
         if hasattr(self, '_agent_viz'):
@@ -322,15 +323,56 @@ class SurveySimulationGrid():
 
         self._check_termination()
 
-        return self._timer.time_remaining, ag_pos, occ_map, cov_map, cts
+        return t_rem, ag_pos, occ_map, cov_map, cts
 
     def get_obs(self):
-        ag_pos = self._griddata.agent
-        occ_map = self._griddata.occ_map
-        cov_map = self._griddata.cov_map
-        cts = self._griddata.cts
+        t = self._timer.time_remaining
 
-        return self._timer.time_remaining, ag_pos, occ_map, cov_map, cts
+        if self.gd_res == 0:
+            ag_pos = self._griddata.agent
+            occ_map = self._griddata.occ_map
+            cov_map = self._griddata.cov_map
+            cts = self._griddata.cts
+        else:
+            ag_pos = self.ds_array(self._griddata.agent)
+            occ_map = self.ds_array(self._griddata.occ_map)
+            cov_map = self.ds_array(self._griddata.cov_map)
+            cts = self.ds_array(self._griddata.cts)
+
+        return t, ag_pos, occ_map, cov_map, cts
+
+    def ds_array(self,
+                 array_in):
+
+        array_in_np = np.array(array_in)
+        # Make the matrix square before decimating
+        array_in_sq = self.squarify_pow2(array_in_np,
+                                         0)
+        ds_factor = int(array_in_sq.shape[1]/self.gd_res)
+        if len(array_in_np.shape) == 2:
+            bl_size = (ds_factor, ds_factor)
+        elif len(array_in_np.shape) == 3:
+            bl_size = (1, ds_factor, ds_factor)
+        array_out = block_reduce(array_in_sq,
+                                 block_size=bl_size,
+                                 func=np.max)
+
+        return array_out
+
+    def squarify_pow2(self, M, val=0):
+
+        if len(M.shape) == 2:
+            (a, b) = M.shape
+        elif len(M.shape) == 3:
+            (c, a, b) = M.shape
+
+        # find next power of two of largest dimension
+        d_pow2 = int(2**np.ceil(np.log2(np.max((a, b)))))
+        padding = ((0, d_pow2-a), (0, d_pow2-b))
+        if len(M.shape) == 3:
+            padding = ((0, 0), padding[0], padding[1])
+
+        return np.pad(M, padding, mode='constant', constant_values=val)
 
     def prev_step(self):
         if self._action_id > 0:
