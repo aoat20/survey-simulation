@@ -41,6 +41,7 @@ class Agent:
         self.distance_dest = np.inf
         self.distance_travelled = 0
         self.waypoints = waypoints
+        self.waypoint_n = 1
 
         # If the course is not set, don't move
         if course is None:

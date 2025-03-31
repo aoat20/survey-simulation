@@ -1,6 +1,6 @@
 import numpy as np
 from survey_simulation.sim_plotter import SEASPlotter
-from survey_simulation.sim_classes import Timer, Playback, Logger, Map, Agent
+from survey_simulation.sim_classes import Timer, Agent
 import json
 import pyproj
 import os
@@ -52,6 +52,7 @@ class SEASSimulation():
     def get_obs(self):
         obs_dict = {}
         obs_dict['time_s'] = self._timer.time_elapsed
+        obs_dict['next_waypoint'] = self._agent.waypoints[self._agent.waypoint_n]
         obs_dict['agent'] = {"speed": self._agent.speed,
                              "course": self._agent.course,
                              "coords_utm": self._agent.xy}
@@ -78,6 +79,11 @@ class SEASSimulation():
 
     def _check_failure_conditions(self):
         # Check if agent has reached the final waypoint
+        wp_d_yds = self._get_distance(self._agent.xy,
+                                      self._agent.waypoints[-1])
+        if wp_d_yds < 1000:
+            self.mission_finished = True
+            self.termination_reason = f"SUCCESS. Reached final waypoint"
 
         # Check distance to each other vessel
         v: Agent
@@ -178,7 +184,8 @@ class SEASSimulation():
                     self._ps_change = False
                     self._plotter_obj.updateps(self._playspeed)
                 if self.mission_finished:
-                    self._plotter_obj.explode(self._agent.xy)
+                    # self._plotter_obj.explode(self._agent.xy)
+                    self._plotter_obj.ax.set_title(self.termination_reason)
 
             self._plotter_obj.pause(1/25)
 
