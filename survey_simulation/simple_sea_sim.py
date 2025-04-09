@@ -12,9 +12,9 @@ class SEASSimulation():
     """
 
     def __init__(self,
-                 scenario_n=1,
-                 mode='manual',
-                 plotter=True):
+                 scenario_n: int|str = "",
+                 mode: str = 'manual',
+                 plotter: bool = True):
         # Load parameters
         self._playspeed = 1
         self.mission_finished = False
@@ -23,8 +23,15 @@ class SEASSimulation():
         self.speed_reached = True
 
         # Load the desired scene
-        scen_pth = os.path.join('SEA_scenarios',
-                                f"SEASscenario{scenario_n}.json")
+        if scenario_n == "":
+            raise ValueError("scenario_n argument not set. Must either be the number of the " +
+                              "desired scenario or a str containing the path to the custom scenario json file.")
+        elif isinstance(scenario_n, int):
+            scen_pth = os.path.join('SEA_scenarios',
+                                    f"SEASscenario{scenario_n}.json")
+        elif isinstance(scenario_n, str):
+            scen_pth = scenario_n
+        
         params, self._agent, self._vessels, xy_lim = self._load_scene(scen_pth)
 
         self._timer = Timer(time_lim=60*60,
