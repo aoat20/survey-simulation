@@ -598,6 +598,24 @@ class Logger:
         self.add_observation([], time_lim)
 
 
+class LoggerBMT:
+    """ Logger class for the BMT
+    """
+    def __init__(self):
+        pass
+
+    def add_speed_req(self, speed_req):
+        pass
+
+    def add_course_req(self, course_req):
+        pass
+
+    def add_vessel_information(self):
+        pass
+
+    def add_vessel_parameters(self):
+        pass
+
 class Map:
 
     """ summary
