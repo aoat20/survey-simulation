@@ -1,12 +1,13 @@
 {
     "params": {
-        "t_step": 1
+        "t_step": 1,
+        "t_max": 2400
     },
     "vessel_details": [
         {
             "vessel": "agent",
-            "speed": 10,
-            "max_speed": 25,
+            "speed_kn": 10,
+            "max_speed_kn": 25,
             "course": 0,
             "speed_change_rate": 0.01,
             "turning_rate": 0.2,
@@ -27,7 +28,7 @@
         },
         {
             "vessel": "cargoship1",
-            "speed": 12,
+            "speed_kn": 12,
             "course": 119,
             "waypoints": [
                 [
@@ -42,7 +43,7 @@
         },
         {
             "vessel": "cargoship2",
-            "speed": 10,
+            "speed_kn": 10,
             "course": 250,
             "waypoints": [
                 [

@@ -1,6 +1,7 @@
 {
     "params": {
-        "t_step": 1
+        "t_step": 10,
+        "t_max": 2400
     },
     "action_taken": {
         "range_yds": 2000,
@@ -9,8 +10,8 @@
     "vessel_details": [
         {
             "vessel": "agent",
-            "speed": 10,
-            "max_speed": 25,
+            "speed_kn": 10,
+            "max_speed_kn": 25,
             "course": 90,
             "speed_change_rate": 0.01,
             "turning_rate": 0.2,
@@ -27,7 +28,7 @@
         },
         {
             "vessel": "cruiseliner1",
-            "speed": 10,
+            "speed_kn": 10,
             "course": 330,
             "waypoints": [
                 [
