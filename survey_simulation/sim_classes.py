@@ -8,6 +8,7 @@ import random
 from matplotlib import cm
 from itertools import permutations
 import matplotlib.pyplot as plt
+import json
 
 
 class Agent:
@@ -601,20 +602,116 @@ class Logger:
 class LoggerBMT:
     """ Logger class for the BMT
     """
-    def __init__(self):
+
+    def __init__(self,
+                 save_dir):
+        self.save_path = self._get_next_file_name(save_dir)
+
+        # Initialise the log dictionary
+        self.log_dict = []
+        self.n = -1
+
+    def _get_next_file_name(self,
+                            save_dir):
+        # find the next file name
+        i = 0
+        while os.path.exists(os.path.join(save_dir,
+                                          f"log_{i}.json")):
+            i += 1
+        return os.path.join(save_dir, f"log_{i}.json")
+
+    def add_time(self,
+                 t):
+        # add the time to the log
+        self.log_dict[self.n]['time'] = t
+
+    def add_speed_req(self,
+                      speed_req):
+        self.log_dict[self.n]['speed_req'] = speed_req
+
+    def add_course_req(self,
+                       course_req):
+        self.log_dict[self.n]['course_req'] = course_req
+
+    def log_vessel(self,
+                   vessel: Agent):
+        # add the agent position
+        self.log_dict[self.n]['vessels'].append({'vessel_type': vessel.vessel_type,
+                                                 'xy': vessel.xy,
+                                                 'course': vessel.course,
+                                                 'speed_kn': vessel.speed*1.944,
+                                                 'waypoints': vessel.waypoints})
+
+    def next_step(self):
+        self.log_dict.append({"vessels": []})
+        self.n += 1
+
+    def save_log_file(self):
+        # write the test dictionary to the file
+        with open(self.save_path, 'w') as f:
+            # write the dict to a json file
+            json.dump(self.log_dict,
+                      f,
+                      indent=4)
+
+    def reset(self):
         pass
 
-    def add_speed_req(self, speed_req):
-        pass
 
-    def add_course_req(self, course_req):
-        pass
+class PlaybackBMT:
+    """ Playback class for the BMT case
+    """
 
-    def add_vessel_information(self):
-        pass
+    def __init__(self,
+                 log_file):
+        # load the log file
+        with open(log_file, 'r') as f:
+            self.log_dict = json.load(f)
 
-    def add_vessel_parameters(self):
-        pass
+    def get_time_req(self,
+                     n):
+        # get the n step
+        t = self.log_dict[n+1]['time'] - self.log_dict[n]['time']
+        speed_req = None
+        course_req = None
+        if 'speed_req' in self.log_dict[n]:
+            speed_req = self.log_dict[n]['speed_req']
+        if 'course_req' in self.log_dict[n]:
+            course_req = self.log_dict[n]['course_req']
+
+        return t, speed_req, course_req
+
+    def get_xy_lims(self):
+        # get the xy limits
+        xy_lims = [np.inf, -np.inf, np.inf, -np.inf]
+        for n in self.log_dict:
+            for v in n['vessels']:
+                xy_lims[0] = min(xy_lims[0], v['xy'][0])
+                xy_lims[1] = max(xy_lims[1], v['xy'][0])
+                xy_lims[2] = min(xy_lims[2], v['xy'][1])
+                xy_lims[3] = max(xy_lims[3], v['xy'][1])
+
+        return xy_lims
+
+    def get_vessels(self, n):
+        # get the initial vessels details
+        vessels = []
+        for v in self.log_dict[n]['vessels']:
+            if v['vessel_type'] == 'agent':
+                agent = Agent(xy_start=v['xy'],
+                              course=v['course'],
+                              speed=v['speed_kn']/1.944,
+                              vessel_type=v['vessel_type'],
+                              waypoints=v['waypoints'])
+            else:
+                v_temp = Agent(xy_start=v['xy'],
+                               course=v['course'],
+                               speed=v['speed_kn']/1.944,
+                               vessel_type=v['vessel_type'],
+                               waypoints=v['waypoints'])
+                vessels.append(v_temp)
+        return agent, vessels
+
 
 class Map:
 
@@ -807,8 +904,7 @@ class Map:
         """
         delta = (res[0] / shape[0], res[1] / shape[1])
         d = (shape[0] // res[0], shape[1] // res[1])
-        grid = np.mgrid[0:res[0]:delta[0], 0:res[1]:delta[1]]\
-            .transpose(1, 2, 0) % 1
+        grid = np.mgrid[0:res[0]:delta[0], 0:res[1]                        :delta[1]].transpose(1, 2, 0) % 1
         # Gradients
         angles = 2*np.pi*np.random.rand(res[0]+1, res[1]+1)
         gradients = np.dstack((np.cos(angles), np.sin(angles)))

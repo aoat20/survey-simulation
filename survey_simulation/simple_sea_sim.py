@@ -1,6 +1,6 @@
 import numpy as np
 from survey_simulation.sim_plotter import SEASPlotter
-from survey_simulation.sim_classes import Timer, Agent
+from survey_simulation.sim_classes import Timer, Agent, LoggerBMT, PlaybackBMT
 import json
 import pyproj
 import os
@@ -12,9 +12,10 @@ class SEASSimulation():
     """
 
     def __init__(self,
-                 scenario_n: int|str = "",
+                 scenario_n: int | str = "",
                  mode: str = 'manual',
-                 plotter: bool = True):
+                 plotter: bool = True,
+                 log_dir: str = "logs/"):
         # Load parameters
         self._playspeed = 1
         self.mission_finished = False
@@ -22,20 +23,33 @@ class SEASSimulation():
         self.course_reached = True
         self.speed_reached = True
 
-        # Load the desired scene
         if scenario_n == "":
-            raise ValueError("scenario_n argument not set. Must either be the number of the " +
-                              "desired scenario or a str containing the path to the custom scenario json file.")
+            raise ValueError("scenario_n argument not set." +
+                             "Must either be the number of the " +
+                             "desired scenario or a str containing" +
+                             " the path to the custom scenario json file.")
         elif isinstance(scenario_n, int):
             scen_pth = os.path.join('SEA_scenarios',
                                     f"SEASscenario{scenario_n}.json")
         elif isinstance(scenario_n, str):
             scen_pth = scenario_n
-        
-        params, self._agent, self._vessels, xy_lim = self._load_scene(scen_pth)
 
-        self._timer = Timer(time_lim=60*60,
-                            t_step=params["t_step"])
+        # Load the desired scene
+        if mode == 'playback':
+            self._playback = PlaybackBMT(scen_pth)
+            self._agent, self._vessels = self._playback.get_vessels(n=0)
+            t_tmp, _, _ = self._playback.get_time_req(0)
+            xy_lim = self._playback.get_xy_lims()
+            self._timer = Timer()
+            self._timer.update_time(t_tmp)
+            plotter = True
+            self.n = 0
+        else:
+            params, self._agent, self._vessels, xy_lim = self._load_scene(
+                scen_pth)
+            self._logger = LoggerBMT(save_dir=log_dir)
+            self._timer = Timer(time_lim=params['t_max'],
+                                t_step=params["t_step"])
 
         if plotter:
             self._plotter_obj = SEASPlotter(map_lims=([sum(x)
@@ -46,6 +60,8 @@ class SEASSimulation():
                                                                      10000])]),
                                             agent=self._agent,
                                             vessels=self._vessels)
+            self._plotter_obj.show(blocking=False)
+
             if mode == 'manual':
                 pos_tmp = self._plotter_obj.ax.get_position()
                 self._plotter_obj.ax.set_position([pos_tmp.x0,
@@ -56,16 +72,26 @@ class SEASSimulation():
                 self._add_controls()
                 self._plotting_loop()
 
+            elif mode == 'playback':
+                pos_tmp = self._plotter_obj.ax.get_position()
+                self._plotter_obj.ax.set_position([pos_tmp.x0,
+                                                  pos_tmp.y0,
+                                                  pos_tmp.width,
+                                                  pos_tmp.height*0.9])
+
+                self._add_controls()
+                self._plotting_loop_playback()
+
     def get_obs(self):
         obs_dict = {}
         obs_dict['time_s'] = self._timer.time_elapsed
         obs_dict['next_waypoint'] = self._agent.waypoints[self._agent.waypoint_n]
-        obs_dict['agent'] = {"speed": self._agent.speed,
+        obs_dict['agent'] = {"speed_kn": self._agent.speed*1.944,
                              "course": self._agent.course,
                              "coords_utm": self._agent.xy}
         v: Agent
         for v in self._vessels:
-            obs_dict[v.vessel_type] = {"speed": v.speed,
+            obs_dict[v.vessel_type] = {"speed_kn": v.speed*1.944,
                                        "course": v.course,
                                        "coords_utm": v.xy,
                                        "range_yds": v.range_yds,
@@ -78,11 +104,13 @@ class SEASSimulation():
                    course):
         self.course_reached = False
         self._change_course(course)
+        self._logger.add_course_req(course)
 
     def set_speed(self,
                   speed_kn):
         self.speed_reached = False
         self._change_speed(speed_kn)
+        self._logger.add_speed_req(speed_kn)
 
     def _check_failure_conditions(self):
         # Check if agent has reached the final waypoint
@@ -99,9 +127,19 @@ class SEASSimulation():
                 self.mission_finished = True
                 self.termination_reason = f"FAILED. Got too close to {v.vessel_type}"
 
+        # Check whether time has run out
+        if self._timer.time_remaining < 0:
+            self.mission_finished = True
+            self.termination_reason = "FAILED. Time ran out"
+
         # Check when/where action is taken
 
         # Check
+
+        if self.mission_finished:
+            # Save log file
+            if hasattr(self, '_logger'):
+                self._logger.save_log_file()
 
     def _get_distance(self, xy1, xy2):
         d_m = np.sqrt((xy1[0]-xy2[0])**2 + (xy1[1]-xy2[1])**2)
@@ -178,8 +216,6 @@ class SEASSimulation():
         self._playspeed_button3.on_clicked(self._playspeed_x10)
 
     def _plotting_loop(self):
-        self._plotter_obj.show(blocking=False)
-
         self._play = True
         self._ps_change = False
 
@@ -196,12 +232,50 @@ class SEASSimulation():
 
             self._plotter_obj.pause(1/25)
 
+    def _plotting_loop_playback(self):
+        self._play = True
+        self._ps_change = False
+
+        while True:
+            if self._play:
+                self._next_step_playback()
+                # Control handlers
+                if self._ps_change:
+                    self._ps_change = False
+                    self._plotter_obj.updateps(self._playspeed)
+                if self.mission_finished:
+                    self._plotter_obj.ax.set_title(self.termination_reason)
+
+            self._plotter_obj.pause(1/self._playspeed)
+
     def next_step(self):
         self._adv_time(self._timer.t_step)
 
     def _next_step_manual(self):
         t = self._timer.t_step*self._playspeed/25
         self._adv_time(t)
+
+    def _next_step_playback(self):
+        t, speed_req, course_req = self._playback.get_time_req(self.n)
+        self._agent, self._vessels = self._playback.get_vessels(self.n)
+
+        self._timer.update_time(t)
+
+        # Update all other vessels
+        v: Agent
+        for v in self._vessels:
+            v.cpa_yds, v.tcpa_s = self._compute_cpa(self._agent.xy,
+                                                    self._agent.course,
+                                                    self._agent.speed,
+                                                    v.xy,
+                                                    v.course,
+                                                    v.speed)
+            v.range_yds = self._get_distance(self._agent.xy,
+                                             v.xy)
+
+        # Update the plotter
+        self._update_plot()
+        self.n += 1
 
     def _adv_time(self, t):
         if not self.mission_finished:
@@ -233,6 +307,15 @@ class SEASSimulation():
                 self._update_plot()
                 self._plotter_obj.pause(0.0001)
 
+            # Update the logger
+            if hasattr(self, '_logger'):
+                self._logger.next_step()
+                self._logger.add_time(self._timer.time_elapsed)
+                self._logger.log_vessel(self._agent)
+                for v in self._vessels:
+                    self._logger.log_vessel(v)
+                self._logger.add_time(self._timer.time_elapsed)
+
     def _update_plot(self):
         self._plotter_obj.update_minutecounter(self._timer.time_elapsed)
         self._update_agentplots(self._plotter_obj.agent,
@@ -254,7 +337,8 @@ class SEASSimulation():
                               agent.speed*1.944,
                               agent.course,
                               agent.cpa_yds,
-                              agent.tcpa_s)
+                              agent.tcpa_s,
+                              agent.range_yds)
         if len(agent.xy_hist) > 1:
             plot_obj.updatetrackhist(agent.xy_hist)
 
@@ -268,8 +352,6 @@ class SEASSimulation():
                         ellps='WGS84',
                         preserve_units=False)
 
-        # grid_conv = 1.6
-
         # Open and load the config file
         f = open(config_file)
         conf = json.load(f)
@@ -280,7 +362,6 @@ class SEASSimulation():
         vessels = []
         xy_lim_tmp = []
         for v in conf['vessel_details']:
-
             # Get the vessel details
             way_points = []
             for wp in v["waypoints"]:
@@ -288,8 +369,7 @@ class SEASSimulation():
                                     self._convert_dms_to_dec(wp[0])))
             xy_lim_tmp.extend(way_points)
 
-            speed_mps = 0.5144*v["speed"]
-            # course = v["course"]+grid_conv
+            speed_mps = 0.5144*v["speed_kn"]
             course = np.rad2deg(np.arctan2(way_points[1][0]-way_points[0][0],
                                            way_points[1][1]-way_points[0][1]))
             # AI agent
@@ -301,7 +381,7 @@ class SEASSimulation():
                               waypoints=way_points)
                 agent.course_change_rate = v["turning_rate"]
                 agent.speed_change_rate = v["speed_change_rate"]
-                # agent.speed_max = v['max_speed']*0.5144
+                # agent.speed_max = v['max_speed_kn']*0.5144
             else:
                 vessels.append(Agent(xy_start=way_points[0],
                                      speed=speed_mps,
@@ -325,7 +405,8 @@ class SEASSimulation():
         return coord_dec
 
     def _reset(self):
-        pass
+        if hasattr(self, '_logger'):
+            self._logger.save_log_file()
 
     def _on_close(self, event):
         exit(1)

@@ -5,6 +5,7 @@ import numpy as np
 import math
 from matplotlib.widgets import TextBox
 from random import random, randint
+import matplotlib
 
 
 class Plotter:
@@ -18,12 +19,18 @@ class Plotter:
         plt.show()
 
     def pause(self, t):
-        self.fig.canvas.draw_idle()
-        plt.pause(t)
+        self.draw(t)
 
-    def draw(self):
-        self.fig.canvas.draw_idle()
-        plt.pause(0.0001)
+    def draw(self, t=0.0001):
+        # self.fig.canvas.draw_idle()
+        # plt.pause(0.0001)
+        figManager = matplotlib._pylab_helpers.Gcf.get_active()
+        if figManager is not None:
+            canvas = figManager.canvas
+            if canvas.figure.stale:
+                canvas.draw()
+            canvas.start_event_loop(t)
+            return
 
     def setup_plot(self):
         # set up empty plot
@@ -413,13 +420,15 @@ class Plotter:
                          speed,
                          course,
                          cpa,
-                         tcpa):
+                         tcpa,
+                         range_yds):
             self.txtlbl.set_position(xy)
             if cpa is not None:
                 self.txtlbl.set_text(
                     f'{self._ag_type}\n'
                     f'{speed:.1f}kts {course:.1f}deg\n'
-                    f'   CPA {cpa:.0f}yds {tcpa/60:.0f}mins')
+                    f'   CPA {cpa: .0f}yds {tcpa/60: .0f}mins\n'
+                    f'   Range {range_yds:.0f}yds')
             else:
                 self.txtlbl.set_text(
                     f'{self._ag_type}\n'
