@@ -613,6 +613,10 @@ class LoggerBMT:
 
     def _get_next_file_name(self,
                             save_dir):
+        # create the directory if it doesn't exist
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
         # find the next file name
         i = 0
         while os.path.exists(os.path.join(save_dir,

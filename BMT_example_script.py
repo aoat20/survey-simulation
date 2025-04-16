@@ -25,5 +25,9 @@ while not ss.mission_finished:
     if obs['time_s'] > 350 and ss.course_reached:
         ss.set_course(-60)
 
-
 print(ss.termination_reason)
+
+# Playback one of the log files
+SEASSimulation(mode='playback',
+               scenario_n='logs/log_1.json',
+               )
