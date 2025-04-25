@@ -74,12 +74,8 @@ class SEASSimulation():
 
             elif mode == 'playback':
                 pos_tmp = self._plotter_obj.ax.get_position()
-                self._plotter_obj.ax.set_position([pos_tmp.x0,
-                                                  pos_tmp.y0,
-                                                  pos_tmp.width,
-                                                  pos_tmp.height*0.9])
 
-                self._add_controls()
+                self._add_controls_pb()
                 self._plotting_loop_playback()
 
     def get_obs(self):
@@ -164,6 +160,13 @@ class SEASSimulation():
             tcpa_s = 0
         return cpa_yds, tcpa_s
 
+    def _compute_course(self,
+                        xy1,
+                        xy2):
+        course_deg = np.rad2deg(np.arctan2(xy2[0]-xy1[0],
+                                           xy2[1]-xy1[1]))
+        return course_deg
+
     def _m_to_yds(self,
                   m):
         yds = m*1.09361
@@ -201,6 +204,24 @@ class SEASSimulation():
         ax_s_pl2 = self._plotter_obj.fig.add_axes([0.8, 0.9, 0.05, 0.0375])
         self._b_s_pl2 = Button(ax_s_pl2, '-1')
         self._b_s_pl2.on_clicked(self._speed_minus_one)
+
+        # Play speed
+        ax_playspeed1 = self._plotter_obj.fig.add_axes(
+            [0.65, 0.82, 0.05, 0.05])
+        self._playspeed_button1 = Button(ax_playspeed1, 'RT')
+        self._playspeed_button1.on_clicked(self._playspeed_rt)
+        ax_playspeed2 = self._plotter_obj.fig.add_axes([0.7, 0.82, 0.05, 0.05])
+        self._playspeed_button2 = Button(ax_playspeed2, 'x2')
+        self._playspeed_button2.on_clicked(self._playspeed_x2)
+        ax_playspeed3 = self._plotter_obj.fig.add_axes(
+            [0.75, 0.82, 0.05, 0.05])
+        self._playspeed_button3 = Button(ax_playspeed3, 'x10')
+        self._playspeed_button3.on_clicked(self._playspeed_x10)
+
+    def _add_controls_pb(self):
+        # Controls callback
+        self._plotter_obj.ax.figure.canvas.mpl_connect('key_press_event',
+                                                       self._on_key)
 
         # Play speed
         ax_playspeed1 = self._plotter_obj.fig.add_axes(
@@ -290,7 +311,16 @@ class SEASSimulation():
             # Update all other vessels
             v: Agent
             for v in self._vessels:
+                # Advance the vessel
                 v.advance_one_step(t)
+                # Check whether it's at its waypoint and change course if so
+                if self._get_distance(v.xy,
+                                      v.waypoints[v.waypoint_n]) < 50:
+                    v.course = self._compute_course(v.waypoints[v.waypoint_n],
+                                                    v.waypoints[v.waypoint_n+1])
+                    v.waypoint_n += 1
+
+                # Compute new CPAs and ranges
                 v.cpa_yds, v.tcpa_s = self._compute_cpa(self._agent.xy,
                                                         self._agent.course,
                                                         self._agent.speed,
@@ -370,8 +400,9 @@ class SEASSimulation():
             xy_lim_tmp.extend(way_points)
 
             speed_mps = 0.5144*v["speed_kn"]
-            course = np.rad2deg(np.arctan2(way_points[1][0]-way_points[0][0],
-                                           way_points[1][1]-way_points[0][1]))
+            course = self._compute_course(way_points[0],
+                                          way_points[1])
+
             # AI agent
             if v['vessel'] == "agent":
                 agent = Agent(xy_start=way_points[0],

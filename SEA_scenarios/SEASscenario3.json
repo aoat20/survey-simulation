@@ -1,0 +1,68 @@
+{
+    "params": {
+        "t_step": 1,
+        "t_max": 4800
+    },
+    "action_taken": {
+        "range_yds": 2000,
+        "tcpa_s": 480
+    },
+    "vessel_details": [
+        {
+            "vessel": "agent",
+            "speed_kn": 10,
+            "max_speed_kn": 25,
+            "course": 90,
+            "speed_change_rate": 0.1,
+            "turning_rate": 0.2,
+            "waypoints": [
+                [
+                    "50-07-04.93N",
+                    "04-12-13.60W"
+                ],
+                [
+                    "50-07-04.93N",
+                    "03-55-31.36W"
+                ]
+            ]
+        },
+        {
+            "vessel": "cruiseliner1",
+            "speed_kn": 10,
+            "course": 270,
+            "waypoints": [
+                [
+                    "50-07-03.68N",
+                    "03-58-35.17W"
+                ],
+                [
+                    "50-07-03.68N",
+                    "04-05-01.60W"
+                ],
+                [
+                    "50-07-49.20N",
+                    "04-06-00.78W"
+                ],
+                [
+                    "50-07-49.02N",
+                    "04-09-24.44W"
+                ]
+            ]
+        },
+        {
+            "vessel": "cargoship1",
+            "speed_kn": 10,
+            "course": 270,
+            "waypoints": [
+                [
+                    "50-06-40.31N",
+                    "03-57-31.72W"
+                ],
+                [
+                    "50-06-40.31N",
+                    "04-12-52.21W"
+                ]
+            ]
+        }
+    ]
+}
