@@ -108,6 +108,9 @@ class SEASSimulation():
         self._change_speed(speed_kn)
         self._logger.add_speed_req(speed_kn)
 
+    def next_step(self):
+        self._adv_time(self._timer.t_step)
+
     def _check_failure_conditions(self):
         # Check if agent has reached the final waypoint
         wp_d_yds = self._get_distance(self._agent.xy,
@@ -128,6 +131,10 @@ class SEASSimulation():
             self.mission_finished = True
             self.termination_reason = "FAILED. Time ran out"
 
+        # Check course alteration
+
+        # Check speed alteration
+
         # Check when/where action is taken
 
         # Check
@@ -140,6 +147,60 @@ class SEASSimulation():
     def _get_distance(self, xy1, xy2):
         d_m = np.sqrt((xy1[0]-xy2[0])**2 + (xy1[1]-xy2[1])**2)
         return d_m
+
+    def _get_perp_d(self, A, B, E):
+
+        # vector AB
+        AB = [None, None]
+        AB[0] = B[0] - A[0]
+        AB[1] = B[1] - A[1]
+
+        # vector BP
+        BE = [None, None]
+        BE[0] = E[0] - B[0]
+        BE[1] = E[1] - B[1]
+
+        # vector AP
+        AE = [None, None]
+        AE[0] = E[0] - A[0]
+        AE[1] = E[1] - A[1]
+
+        # Variables to store dot product
+
+        # Calculating the dot product
+        AB_BE = AB[0] * BE[0] + AB[1] * BE[1]
+        AB_AE = AB[0] * AE[0] + AB[1] * AE[1]
+
+        # Minimum distance from
+        # point E to the line segment
+        d = 0
+
+        # Case 1
+        if (AB_BE > 0):
+
+            # Finding the magnitude
+            y = E[1] - B[1]
+            x = E[0] - B[0]
+            d = np.sqrt(x * x + y * y)
+
+        # Case 2
+        elif (AB_AE < 0):
+            y = E[1] - A[1]
+            x = E[0] - A[0]
+            d = np.sqrt(x * x + y * y)
+
+        # Case 3
+        else:
+
+            # Finding the perpendicular distance
+            x1 = AB[0]
+            y1 = AB[1]
+            x2 = AE[0]
+            y2 = AE[1]
+            mod = np.sqrt(x1 * x1 + y1 * y1)
+            d = abs(x1 * y2 - y1 * x2) / mod
+
+        return d
 
     def _compute_cpa(self,
                      xy1, course1, speed1,
@@ -269,9 +330,6 @@ class SEASSimulation():
 
             self._plotter_obj.pause(1/self._playspeed)
 
-    def next_step(self):
-        self._adv_time(self._timer.t_step)
-
     def _next_step_manual(self):
         t = self._timer.t_step*self._playspeed/25
         self._adv_time(t)
@@ -313,12 +371,18 @@ class SEASSimulation():
             for v in self._vessels:
                 # Advance the vessel
                 v.advance_one_step(t)
-                # Check whether it's at its waypoint and change course if so
-                if self._get_distance(v.xy,
-                                      v.waypoints[v.waypoint_n]) < 50:
-                    v.course = self._compute_course(v.waypoints[v.waypoint_n],
-                                                    v.waypoints[v.waypoint_n+1])
-                    v.waypoint_n += 1
+                if v.waypoint_n < len(v.waypoints)-1:
+                    # Check whether it's at its waypoint and change course if so
+                    d_wp = self._get_perp_d(v.xy,
+                                            v.xy_hist[-2],
+                                            v.waypoints[v.waypoint_n][0:2])
+                    if d_wp < 100:
+                        v.course = self._compute_course(v.waypoints[v.waypoint_n],
+                                                        v.waypoints[v.waypoint_n+1])
+                        # Check if waypoint contains a speed change
+                        if len(v.waypoints[v.waypoint_n]) == 3:
+                            v.speed = v.waypoints[v.waypoint_n][2]*0.5144
+                        v.waypoint_n += 1
 
                 # Compute new CPAs and ranges
                 v.cpa_yds, v.tcpa_s = self._compute_cpa(self._agent.xy,
@@ -395,9 +459,14 @@ class SEASSimulation():
             # Get the vessel details
             way_points = []
             for wp in v["waypoints"]:
-                way_points.append(p(self._convert_dms_to_dec(wp[1]),
-                                    self._convert_dms_to_dec(wp[0])))
-            xy_lim_tmp.extend(way_points)
+                wp_temp = list(p(self._convert_dms_to_dec(wp[1]),
+                                 self._convert_dms_to_dec(wp[0])))
+                # If there's a speed change, add an extra element
+                if len(wp) == 3:
+                    wp_temp.append(wp[2])
+                way_points.append(wp_temp)
+                # get waypoints for the computation of the limits
+                xy_lim_tmp.append(wp_temp[0:2])
 
             speed_mps = 0.5144*v["speed_kn"]
             course = self._compute_course(way_points[0],
