@@ -1,0 +1,86 @@
+{
+    "params": {
+        "t_step": 1,
+        "t_max": 4800
+    },
+    "vessel_details": [
+        {
+            "vessel": "agent",
+            "speed_kn": 10,
+            "max_speed_kn": 25,
+            "course": 90,
+            "speed_change_rate": 0.01,
+            "turning_rate": 0.2,
+            "waypoints": [
+                [
+                    "50-04-07.31N",
+                    "03-46-12.60W"
+                ],
+                [
+                    "50-04-07.31N",
+                    "03-30-53.01W"
+                ]
+            ]
+        },
+        {
+            "vessel": "fishingvessel1",
+            "speed_kn": 4,
+            "course": 270,
+            "waypoints": [
+                [
+                    "50-04-07.31N",
+                    "03-37-00.40W"
+                ],
+                [
+                    "50-04-07.31N",
+                    "03-47-44.11W"
+                ]
+            ]
+        },
+        {
+            "vessel": "fishingvessel2",
+            "speed_kn": 4,
+            "course": 265,
+            "waypoints": [
+                [
+                    "50-03-46.22N",
+                    "03-36-02.12W"
+                ],
+                [
+                    "50-03-20-43N",
+                    "03-43-40.08W"
+                ]
+            ]
+        },
+        {
+            "vessel": "cruiseliner1",
+            "speed_kn": 18,
+            "course": 90,
+            "waypoints": [
+                [
+                    "50-05-07.09N",
+                    "03-50-31.18W"
+                ],
+                [
+                    "50-05-07.09N",
+                    "03-19-51.36W"
+                ]
+            ]
+        },
+        {
+            "vessel": "cruiseliner2",
+            "speed_kn": 23.3,
+            "course": 90,
+            "waypoints": [
+                [
+                    "50-03-08.18N",
+                    "03-51-20.23W"
+                ],
+                [
+                    "50-03-08.18N",
+                    "03-20-41.67W"
+                ]
+            ]
+        }
+    ]
+}
