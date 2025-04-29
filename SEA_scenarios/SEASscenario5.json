@@ -1,6 +1,6 @@
 {
     "params": {
-        "t_step": 1,
+        "t_step": 10,
         "t_max": 4800
     },
     "vessel_details": [
