@@ -142,6 +142,7 @@ class SEASSimulation():
         if self.mission_finished:
             # Save log file
             if hasattr(self, '_logger'):
+                self._logger.add_termination_reason(self.termination_reason)
                 self._logger.save_log_file()
 
     def _get_distance(self, xy1, xy2):

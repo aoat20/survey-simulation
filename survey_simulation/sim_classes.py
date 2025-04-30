@@ -644,11 +644,18 @@ class LoggerBMT:
                                                  'xy': vessel.xy,
                                                  'course': vessel.course,
                                                  'speed_kn': vessel.speed*1.944,
+                                                 'range_yd': vessel.range_yds,
+                                                 'cpa_yd': vessel.cpa_yds,
+                                                 'tcpa_s': vessel.tcpa_s,
                                                  'waypoints': vessel.waypoints})
 
     def next_step(self):
         self.log_dict.append({"vessels": []})
         self.n += 1
+
+    def add_termination_reason(self,
+                               termination_reason: str):
+        self.log_dict[self.n]['termination_reason': termination_reason]
 
     def save_log_file(self):
         # write the test dictionary to the file
@@ -914,7 +921,7 @@ class Map:
         """
         delta = (res[0] / shape[0], res[1] / shape[1])
         d = (shape[0] // res[0], shape[1] // res[1])
-        grid = np.mgrid[0:res[0]:delta[0], 0:res[1]:delta[1]].transpose(1, 2, 0) % 1
+        grid = np.mgrid[0:res[0]:delta[0], 0:res[1]                        :delta[1]].transpose(1, 2, 0) % 1
         # Gradients
         angles = 2*np.pi*np.random.rand(res[0]+1, res[1]+1)
         gradients = np.dstack((np.cos(angles), np.sin(angles)))
