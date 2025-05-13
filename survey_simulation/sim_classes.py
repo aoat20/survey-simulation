@@ -726,6 +726,12 @@ class PlaybackBMT:
                                speed=v['speed_kn']/1.944,
                                vessel_type=v['vessel_type'],
                                waypoints=v['waypoints'])
+                for d_n in self.log_dict[0:n]:
+                    v_temp.xy_hist = np.append(v_temp.xy_hist,
+                                               [v_n['xy']for v_n in d_n['vessels']
+                                                if v_n['vessel_type'] == v['vessel_type']],
+                                               axis=0)
+                v_temp.xy_hist = v_temp.xy_hist[1:]
                 vessels.append(v_temp)
         return agent, vessels
 
@@ -921,7 +927,8 @@ class Map:
         """
         delta = (res[0] / shape[0], res[1] / shape[1])
         d = (shape[0] // res[0], shape[1] // res[1])
-        grid = np.mgrid[0:res[0]:delta[0], 0:res[1]                        :delta[1]].transpose(1, 2, 0) % 1
+        grid = np.mgrid[0:res[0]:delta[0], 0:res[1]
+            :delta[1]].transpose(1, 2, 0) % 1
         # Gradients
         angles = 2*np.pi*np.random.rand(res[0]+1, res[1]+1)
         gradients = np.dstack((np.cos(angles), np.sin(angles)))
