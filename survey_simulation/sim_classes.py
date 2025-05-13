@@ -655,7 +655,7 @@ class LoggerBMT:
 
     def add_termination_reason(self,
                                termination_reason: str):
-        self.log_dict[self.n]['termination_reason': termination_reason]
+        self.log_dict[self.n]['termination_reason'] = termination_reason
 
     def save_log_file(self):
         # write the test dictionary to the file
