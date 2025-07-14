@@ -1,14 +1,7 @@
 {
     "params": {
         "t_step": 10,
-        "t_max": 2400
-    },
-    "action_taken": {
-        "range_yds": [
-            2000,
-            3500
-        ],
-        "tcpa_s": 480
+        "t_max": 3000
     },
     "vessel_details": [
         {

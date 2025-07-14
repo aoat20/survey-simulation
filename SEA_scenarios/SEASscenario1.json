@@ -3,10 +3,6 @@
         "t_step": 10,
         "t_max": 3600
     },
-    "action_taken": {
-        "range_yds": 2000,
-        "tcpa_s": 210
-    },
     "vessel_details": [
         {
             "vessel": "agent",
