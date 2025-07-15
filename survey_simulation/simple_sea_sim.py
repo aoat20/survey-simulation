@@ -23,6 +23,8 @@ class SEASSimulation():
         self.course_reached = True
         self.speed_reached = True
 
+        self.wps_utm = []
+
         if scenario_n == "":
             raise ValueError("scenario_n argument not set." +
                              "Must either be the number of the " +
@@ -50,6 +52,11 @@ class SEASSimulation():
             self._logger = LoggerBMT(save_dir=log_dir)
             self._timer = Timer(time_lim=params['t_max'],
                                 t_step=params["t_step"])
+
+            # Make the performance metric
+            self.perf_metr = {"mission_duration": 0}
+            self.course_diff = np.inf
+            self.speed_diff = np.inf
 
         if plotter:
             self._plotter_obj = SEASPlotter(map_lims=([sum(x)
@@ -108,6 +115,19 @@ class SEASSimulation():
         self._change_speed(speed_kn)
         self._logger.add_speed_req(speed_kn)
 
+    def set_waypoints(self,
+                      wps_utm):
+        if type(wps_utm[0]) != list:
+            wps_utm = [wps_utm]
+        self.wps_utm = wps_utm
+        # Add the final waypoint
+        self.wps_utm.append(self._agent.waypoints[-1])
+        self._logger.add_waypoint_req(wps_utm)
+
+        course_new = self._compute_course(self._agent.xy,
+                                          wps_utm[0])
+        self._change_course(course_new)
+
     def next_step(self):
         self._adv_time(self._timer.t_step)
 
@@ -119,23 +139,27 @@ class SEASSimulation():
             self.mission_finished = True
             self.termination_reason = f"SUCCESS. Reached final waypoint"
 
-        # Check distance to each other vessel
+        # Check distance to each other vessel and cpa/tcpa
         v: Agent
         for v in self._vessels:
             if v.range_yds < 1000:
                 self.mission_finished = True
                 self.termination_reason = f"FAILED. Got too close to {v.vessel_type}"
+            elif v.range_yds < 2000:
+                self.perf_metr['range_'+v.vessel_type] = v.range_yds
+                self.perf_metr['duration'] = self._timer.time_elapsed
 
         # Check whether time has run out
         if self._timer.time_remaining < 0:
             self.mission_finished = True
             self.termination_reason = "FAILED. Time ran out"
 
-        # Check course alteration
+        # Check minimum course alteration
+        if self.course_diff < 10:
+            self.mission_finished = True
+            self.termination_reason = "FAILED. Course alteration too small."
 
         # Check speed alteration
-
-        # Check when/where action is taken
 
         # Check
 
@@ -143,6 +167,7 @@ class SEASSimulation():
             # Save log file
             if hasattr(self, '_logger'):
                 self._logger.add_termination_reason(self.termination_reason)
+                self._logger.add_performance_score('Performance score: ')
                 self._logger.save_log_file()
 
     def _get_distance(self, xy1, xy2):
@@ -367,6 +392,17 @@ class SEASSimulation():
             if self._agent.speed_req == self._agent.speed:
                 self.speed_reached = True
 
+            # check if waypoints have been reached
+            if self.wps_utm != []:
+                d_wp_prev = self._get_distance(self._agent.xy_hist[-2],
+                                               self.wps_utm[0])
+                d_wp = self._get_distance(self._agent.xy,
+                                          self.wps_utm[0])
+                if d_wp > d_wp_prev:
+                    course_new = self._compute_course(self._agent.xy,
+                                                      self.wps_utm.pop(0))
+                    self._change_course(course_new)
+
             # Update all other vessels
             v: Agent
             for v in self._vessels:
@@ -514,8 +550,10 @@ class SEASSimulation():
 
     def _change_course(self,
                        new_course):
-        if float(new_course) != self._agent.course:
-            self._course_req = float(new_course)
+
+        new_course_fl = float(new_course)
+        if new_course_fl != self._agent.course:
+            self._course_req = new_course_fl
             self._agent.course_req = self._course_req
 
     def _change_speed(self,
