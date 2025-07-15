@@ -10,7 +10,7 @@
             "max_speed_kn": 25,
             "course": 46,
             "speed_change_rate": 0.1,
-            "turning_rate": 0.2,
+            "turning_rate": 1,
             "waypoints": [
                 [
                     "50-05-42.30N",
