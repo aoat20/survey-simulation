@@ -637,6 +637,10 @@ class LoggerBMT:
                        course_req):
         self.log_dict[self.n]['course_req'] = course_req
 
+    def add_waypoint_req(self,
+                         wp_req):
+        self.log_dict[self.n]['wp_req'] = wp_req
+
     def log_vessel(self,
                    vessel: Agent):
         # add the agent position
@@ -656,6 +660,10 @@ class LoggerBMT:
     def add_termination_reason(self,
                                termination_reason: str):
         self.log_dict[self.n]['termination_reason'] = termination_reason
+
+    def add_performance_score(self,
+                              perf_summary):
+        self.log_dict[self.n]['performance_summary'] = perf_summary
 
     def save_log_file(self):
         # write the test dictionary to the file
